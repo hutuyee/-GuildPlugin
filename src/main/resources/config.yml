@@ -1,0 +1,119 @@
+# 工会插件主配置文件
+
+# 数据库配置
+database:
+  # 数据库类型: mysql 或 sqlite
+  type: sqlite
+  
+  # MySQL配置（当type为mysql时使用）
+  mysql:
+    host: localhost
+    port: 3306
+    database: guild
+    username: root
+    password: ""
+    pool-size: 10
+    min-idle: 5
+    connection-timeout: 30000
+    idle-timeout: 600000
+    max-lifetime: 1800000
+
+# 工会配置
+guild:
+  # 工会名称最小长度
+  min-name-length: 3
+  # 工会名称最大长度
+  max-name-length: 20
+  # 工会标签最大长度
+  max-tag-length: 6
+  # 工会描述最大长度
+  max-description-length: 100
+  # 工会最大成员数量
+  max-members: 50
+  # 创建工会所需费用（需要Vault）
+  creation-cost: 1000.0
+  # 工会标签颜色
+  tag-color: "&6"
+  # 工会名称颜色
+  name-color: "&e"
+
+# 权限配置
+permissions:
+  # 默认权限
+  default:
+    can-create: true
+    can-invite: true
+    can-kick: true
+    can-promote: true
+    can-demote: false
+    can-delete: false
+  
+  # 官员权限
+  officer:
+    can-create: true
+    can-invite: true
+    can-kick: true
+    can-promote: false
+    can-demote: false
+    can-delete: false
+  
+  # 成员权限
+  member:
+    can-create: true
+    can-invite: false
+    can-kick: false
+    can-promote: false
+    can-demote: false
+    can-delete: false
+
+# 消息配置
+messages:
+  # 是否启用消息
+  enabled: true
+  # 消息前缀
+  prefix: "&6[工会] &r"
+  # 消息颜色
+  colors:
+    success: "&a"
+    error: "&c"
+    info: "&e"
+    warning: "&6"
+
+# GUI配置
+gui:
+  # 是否启用GUI
+  enabled: true
+  # GUI标题
+  title: "&6工会系统"
+  # GUI大小（必须是9的倍数）
+  size: 54
+  # 是否显示工会标签
+  show-tag: true
+  # 是否显示工会描述
+  show-description: true
+
+# 占位符配置
+placeholders:
+  # 是否启用占位符
+  enabled: true
+  # 占位符前缀
+  prefix: "guild_"
+  # 是否缓存占位符
+  cache-enabled: true
+  # 缓存时间（秒）
+  cache-time: 30
+
+# 日志配置
+logging:
+  # 是否启用日志
+  enabled: true
+  # 日志级别: DEBUG, INFO, WARN, ERROR
+  level: INFO
+  # 是否记录到文件
+  file-logging: true
+  # 日志文件路径
+  log-file: "logs/guild.log"
+  # 最大日志文件大小（MB）
+  max-file-size: 10
+  # 保留的日志文件数量
+  max-files: 5
