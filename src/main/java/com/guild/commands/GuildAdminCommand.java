@@ -135,6 +135,33 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                     break;
                 case "relation":
                     if ("create".equals(args[1])) {
+                        // 第3个参数是第一个工会名称，获取所有工会名称
+                        plugin.getGuildService().getAllGuildsAsync().thenAccept(guilds -> {
+                            for (Guild guild : guilds) {
+                                completions.add(guild.getName());
+                            }
+                        });
+                    }
+                    break;
+            }
+        } else if (args.length == 4) {
+            switch (args[0].toLowerCase()) {
+                case "relation":
+                    if ("create".equals(args[1])) {
+                        // 第4个参数是第二个工会名称，获取所有工会名称
+                        plugin.getGuildService().getAllGuildsAsync().thenAccept(guilds -> {
+                            for (Guild guild : guilds) {
+                                completions.add(guild.getName());
+                            }
+                        });
+                    }
+                    break;
+            }
+        } else if (args.length == 5) {
+            switch (args[0].toLowerCase()) {
+                case "relation":
+                    if ("create".equals(args[1])) {
+                        // 第5个参数是关系类型
                         completions.addAll(Arrays.asList("ally", "enemy", "war", "truce", "neutral"));
                     }
                     break;

@@ -162,7 +162,7 @@ public class CreateRelationGUI implements GUI {
             GuildRelation.RelationType type = types[i];
             Material material = getRelationTypeMaterial(type);
             String color = type.getColor();
-            String displayName = color + type.getDisplayName();
+            String displayName = ColorUtils.colorize(color + type.getDisplayName());
             
             List<String> lore = new ArrayList<>();
             lore.add(ColorUtils.colorize("&7关系类型: " + color + type.getDisplayName()));
@@ -209,7 +209,7 @@ public class CreateRelationGUI implements GUI {
             int slot = 9 + (i - startIndex);
             
             Material material = Material.SHIELD;
-            String displayName = "&f" + targetGuild.getName();
+            String displayName = ColorUtils.colorize("&f" + targetGuild.getName());
             
             List<String> lore = new ArrayList<>();
             lore.add(ColorUtils.colorize("&7工会名称: " + targetGuild.getName()));

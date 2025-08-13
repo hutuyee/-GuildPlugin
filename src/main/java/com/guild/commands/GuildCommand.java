@@ -5,6 +5,7 @@ import com.guild.core.utils.ColorUtils;
 import com.guild.gui.MainGuildGUI;
 import com.guild.models.Guild;
 import com.guild.models.GuildMember;
+import com.guild.models.GuildRelation;
 import com.guild.services.GuildService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 工会主命令
@@ -98,6 +100,9 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             case "transfer":
                 handleTransfer(player, args);
                 break;
+            case "logs":
+                handleLogs(player, args);
+                break;
             case "help":
                 handleHelp(player);
                 break;
@@ -115,12 +120,98 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         
         if (args.length == 1) {
             List<String> subCommands = Arrays.asList(
-                "create", "info", "members", "invite", "kick", "promote", "demote", "accept", "decline", "leave", "delete", "sethome", "home", "relation", "economy", "deposit", "withdraw", "transfer", "help"
+                "create", "info", "members", "invite", "kick", "promote", "demote", "accept", "decline", "leave", "delete", "sethome", "home", "relation", "economy", "deposit", "withdraw", "transfer", "logs", "help"
             );
             
             for (String subCommand : subCommands) {
                 if (subCommand.toLowerCase().startsWith(args[0].toLowerCase())) {
                     completions.add(subCommand);
+                }
+            }
+        } else if (args.length == 2) {
+            String subCommand = args[0].toLowerCase();
+            
+            switch (subCommand) {
+                case "relation":
+                    List<String> relationSubCommands = Arrays.asList("list", "create", "delete", "accept", "reject");
+                    for (String cmd : relationSubCommands) {
+                        if (cmd.toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(cmd);
+                        }
+                    }
+                    break;
+                case "economy":
+                    List<String> economySubCommands = Arrays.asList("info", "deposit", "withdraw", "transfer");
+                    for (String cmd : economySubCommands) {
+                        if (cmd.toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(cmd);
+                        }
+                    }
+                    break;
+                case "invite":
+                case "kick":
+                case "promote":
+                case "demote":
+                    // 获取在线玩家列表
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (player.getName().toLowerCase().startsWith(args[1].toLowerCase())) {
+                            completions.add(player.getName());
+                        }
+                    }
+                    break;
+            }
+        } else if (args.length == 3) {
+            String subCommand = args[0].toLowerCase();
+            String subSubCommand = args[1].toLowerCase();
+            
+            if (subCommand.equals("relation") && subSubCommand.equals("create")) {
+                // 为创建关系提供简单的补全提示
+                // 由于异步操作的限制，这里只提供基本的提示
+                List<String> suggestions = Arrays.asList("目标工会名称");
+                for (String suggestion : suggestions) {
+                    if (suggestion.toLowerCase().startsWith(args[2].toLowerCase())) {
+                        completions.add(suggestion);
+                    }
+                }
+            } else if (subCommand.equals("relation") && (subSubCommand.equals("delete") || subSubCommand.equals("accept") || subSubCommand.equals("reject"))) {
+                // 为关系操作提供简单的补全提示
+                // 由于异步操作的限制，这里只提供基本的提示
+                List<String> suggestions = Arrays.asList("工会名称");
+                for (String suggestion : suggestions) {
+                    if (suggestion.toLowerCase().startsWith(args[2].toLowerCase())) {
+                        completions.add(suggestion);
+                    }
+                }
+            } else if (subCommand.equals("transfer")) {
+                // 为转账提供简单的补全提示
+                // 由于异步操作的限制，这里只提供基本的提示
+                List<String> suggestions = Arrays.asList("目标工会名称");
+                for (String suggestion : suggestions) {
+                    if (suggestion.toLowerCase().startsWith(args[2].toLowerCase())) {
+                        completions.add(suggestion);
+                    }
+                }
+            }
+        } else if (args.length == 4) {
+            String subCommand = args[0].toLowerCase();
+            String subSubCommand = args[1].toLowerCase();
+            
+            if (subCommand.equals("relation") && subSubCommand.equals("create")) {
+                // 关系类型补全
+                List<String> relationTypes = Arrays.asList("ally", "enemy", "war", "truce", "neutral");
+                for (String type : relationTypes) {
+                    if (type.toLowerCase().startsWith(args[3].toLowerCase())) {
+                        completions.add(type);
+                    }
+                }
+            } else if (subCommand.equals("deposit") || subCommand.equals("withdraw") || 
+                      (subCommand.equals("transfer") && args.length == 4)) {
+                // 金额建议（这里只提供一些常用金额）
+                List<String> amounts = Arrays.asList("100", "500", "1000", "5000", "10000");
+                for (String amount : amounts) {
+                    if (amount.startsWith(args[3])) {
+                        completions.add(amount);
+                    }
                 }
             }
         }
@@ -273,8 +364,10 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         String leaderMessage = plugin.getConfigManager().getMessagesConfig().getString("info.leader", "&e会长: &f{leader}");
         player.sendMessage(ColorUtils.colorize(leaderMessage.replace("{leader}", guild.getLeaderName())));
         
-        String membersMessage = plugin.getConfigManager().getMessagesConfig().getString("info.members", "&e成员数量: &f{count}");
-        player.sendMessage(ColorUtils.colorize(membersMessage.replace("{count}", String.valueOf(memberCount))));
+        String membersMessage = plugin.getConfigManager().getMessagesConfig().getString("info.members", "&e成员数量: &f{count}/{max}");
+        player.sendMessage(ColorUtils.colorize(membersMessage
+            .replace("{count}", String.valueOf(memberCount))
+            .replace("{max}", String.valueOf(guild.getMaxMembers()))));
         
         String roleMessage = plugin.getConfigManager().getMessagesConfig().getString("info.role", "&e您的角色: &f{role}");
         player.sendMessage(ColorUtils.colorize(roleMessage.replace("{role}", member.getRole().getDisplayName())));
@@ -1022,14 +1115,279 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         
         String transfer = "&e/guild transfer <工会> <金额> &7- 向其他工会转账";
         player.sendMessage(ColorUtils.colorize(transfer));
+        
+        String logs = "&e/guild logs &7- 查看工会操作日志";
+        player.sendMessage(ColorUtils.colorize(logs));
     }
     
     /**
      * 处理工会关系命令
      */
     private void handleRelation(Player player, String[] args) {
-        // TODO: 实现工会关系管理
-        player.sendMessage(ColorUtils.colorize("&e工会关系功能开发中..."));
+        // 获取玩家工会
+        Guild guild = plugin.getGuildService().getPlayerGuild(player.getUniqueId());
+        if (guild == null) {
+            String message = plugin.getConfigManager().getMessagesConfig().getString("relation.no-guild", "&c您还没有加入工会！");
+            player.sendMessage(ColorUtils.colorize(message));
+            return;
+        }
+        
+        // 检查权限（只有会长可以管理关系）
+        GuildMember member = plugin.getGuildService().getGuildMember(player.getUniqueId());
+        if (member == null || member.getRole() != GuildMember.Role.LEADER) {
+            String message = plugin.getConfigManager().getMessagesConfig().getString("relation.only-leader", "&c只有工会会长才能管理工会关系！");
+            player.sendMessage(ColorUtils.colorize(message));
+            return;
+        }
+        
+        if (args.length == 1) {
+            // 显示关系管理帮助
+            showRelationHelp(player);
+            return;
+        }
+        
+        switch (args[1].toLowerCase()) {
+            case "list":
+                handleRelationList(player, guild);
+                break;
+            case "create":
+                if (args.length < 4) {
+                    String message = plugin.getConfigManager().getMessagesConfig().getString("relation.create-usage", "&e用法: /guild relation create <目标工会> <关系类型>");
+                    player.sendMessage(ColorUtils.colorize(message));
+                    return;
+                }
+                handleRelationCreate(player, guild, args[2], args[3]);
+                break;
+            case "delete":
+                if (args.length < 3) {
+                    String message = plugin.getConfigManager().getMessagesConfig().getString("relation.delete-usage", "&e用法: /guild relation delete <目标工会>");
+                    player.sendMessage(ColorUtils.colorize(message));
+                    return;
+                }
+                handleRelationDelete(player, guild, args[2]);
+                break;
+            case "accept":
+                if (args.length < 3) {
+                    String message = plugin.getConfigManager().getMessagesConfig().getString("relation.accept-usage", "&e用法: /guild relation accept <目标工会>");
+                    player.sendMessage(ColorUtils.colorize(message));
+                    return;
+                }
+                handleRelationAccept(player, guild, args[2]);
+                break;
+            case "reject":
+                if (args.length < 3) {
+                    String message = plugin.getConfigManager().getMessagesConfig().getString("relation.reject-usage", "&e用法: /guild relation reject <目标工会>");
+                    player.sendMessage(ColorUtils.colorize(message));
+                    return;
+                }
+                handleRelationReject(player, guild, args[2]);
+                break;
+            default:
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.unknown-subcommand", "&c未知的子命令！使用 /guild relation 查看帮助。");
+                player.sendMessage(ColorUtils.colorize(message));
+                break;
+        }
+    }
+    
+    /**
+     * 显示关系管理帮助
+     */
+    private void showRelationHelp(Player player) {
+        String title = plugin.getConfigManager().getMessagesConfig().getString("relation.help-title", "&6=== 工会关系管理 ===");
+        player.sendMessage(ColorUtils.colorize(title));
+        
+        String list = plugin.getConfigManager().getMessagesConfig().getString("relation.help-list", "&e/guild relation list &7- 查看所有关系");
+        player.sendMessage(ColorUtils.colorize(list));
+        
+        String create = plugin.getConfigManager().getMessagesConfig().getString("relation.help-create", "&e/guild relation create <工会> <类型> &7- 创建关系");
+        player.sendMessage(ColorUtils.colorize(create));
+        
+        String delete = plugin.getConfigManager().getMessagesConfig().getString("relation.help-delete", "&e/guild relation delete <工会> &7- 删除关系");
+        player.sendMessage(ColorUtils.colorize(delete));
+        
+        String accept = plugin.getConfigManager().getMessagesConfig().getString("relation.help-accept", "&e/guild relation accept <工会> &7- 接受关系请求");
+        player.sendMessage(ColorUtils.colorize(accept));
+        
+        String reject = plugin.getConfigManager().getMessagesConfig().getString("relation.help-reject", "&e/guild relation reject <工会> &7- 拒绝关系请求");
+        player.sendMessage(ColorUtils.colorize(reject));
+        
+        String types = plugin.getConfigManager().getMessagesConfig().getString("relation.help-types", "&7关系类型: &eally(盟友), enemy(敌对), war(开战), truce(停战), neutral(中立)");
+        player.sendMessage(ColorUtils.colorize(types));
+    }
+    
+    /**
+     * 处理关系列表
+     */
+    private void handleRelationList(Player player, Guild guild) {
+        plugin.getGuildService().getGuildRelationsAsync(guild.getId()).thenAccept(relations -> {
+            if (relations == null || relations.isEmpty()) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.no-relations", "&7您的工会还没有任何关系。");
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            String title = plugin.getConfigManager().getMessagesConfig().getString("relation.list-title", "&6=== 工会关系列表 ===");
+            player.sendMessage(ColorUtils.colorize(title));
+            
+            for (GuildRelation relation : relations) {
+                String otherGuildName = relation.getOtherGuildName(guild.getId());
+                String status = relation.getStatus().name();
+                String type = relation.getType().name();
+                
+                String relationInfo = plugin.getConfigManager().getMessagesConfig().getString("relation.list-format", "&e{other_guild} &7- {type} ({status})")
+                    .replace("{other_guild}", otherGuildName)
+                    .replace("{type}", type)
+                    .replace("{status}", status);
+                player.sendMessage(ColorUtils.colorize(relationInfo));
+            }
+        });
+    }
+    
+    /**
+     * 处理创建关系
+     */
+    private void handleRelationCreate(Player player, Guild guild, String targetGuildName, String relationTypeStr) {
+        // 验证关系类型
+        GuildRelation.RelationType relationType;
+        try {
+            relationType = GuildRelation.RelationType.valueOf(relationTypeStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            String message = plugin.getConfigManager().getMessagesConfig().getString("relation.invalid-type", "&c无效的关系类型！有效类型: ally, enemy, war, truce, neutral");
+            player.sendMessage(ColorUtils.colorize(message));
+            return;
+        }
+        
+        // 获取目标工会
+        plugin.getGuildService().getGuildByNameAsync(targetGuildName).thenAccept(targetGuild -> {
+            if (targetGuild == null) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.target-not-found", "&c目标工会 {guild} 不存在！")
+                    .replace("{guild}", targetGuildName);
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            if (targetGuild.getId() == guild.getId()) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.cannot-relation-self", "&c不能与自己建立关系！");
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            // 创建关系
+            plugin.getGuildService().createGuildRelationAsync(guild.getId(), targetGuild.getId(), guild.getName(), targetGuild.getName(), relationType, player.getUniqueId(), player.getName())
+                .thenAccept(success -> {
+                    if (success) {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.create-success", "&a已向 {guild} 发送 {type} 关系请求！")
+                            .replace("{guild}", targetGuildName)
+                            .replace("{type}", relationType.name());
+                        player.sendMessage(ColorUtils.colorize(message));
+                    } else {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.create-failed", "&c创建关系失败！可能已经存在关系。");
+                        player.sendMessage(ColorUtils.colorize(message));
+                    }
+                });
+        });
+    }
+    
+    /**
+     * 处理删除关系
+     */
+    private void handleRelationDelete(Player player, Guild guild, String targetGuildName) {
+        // 获取目标工会
+        plugin.getGuildService().getGuildByNameAsync(targetGuildName).thenAccept(targetGuild -> {
+            if (targetGuild == null) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.target-not-found", "&c目标工会 {guild} 不存在！")
+                    .replace("{guild}", targetGuildName);
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            // 获取关系然后删除
+            plugin.getGuildService().getGuildRelationAsync(guild.getId(), targetGuild.getId())
+                .thenCompose(relation -> {
+                    if (relation == null) {
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return plugin.getGuildService().deleteGuildRelationAsync(relation.getId());
+                })
+                .thenAccept(success -> {
+                    if (success) {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.delete-success", "&a已删除与 {guild} 的关系！")
+                            .replace("{guild}", targetGuildName);
+                        player.sendMessage(ColorUtils.colorize(message));
+                    } else {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.delete-failed", "&c删除关系失败！可能关系不存在。");
+                        player.sendMessage(ColorUtils.colorize(message));
+                    }
+                });
+        });
+    }
+    
+    /**
+     * 处理接受关系
+     */
+    private void handleRelationAccept(Player player, Guild guild, String targetGuildName) {
+        // 获取目标工会
+        plugin.getGuildService().getGuildByNameAsync(targetGuildName).thenAccept(targetGuild -> {
+            if (targetGuild == null) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.target-not-found", "&c目标工会 {guild} 不存在！")
+                    .replace("{guild}", targetGuildName);
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            // 获取关系然后接受
+            plugin.getGuildService().getGuildRelationAsync(guild.getId(), targetGuild.getId())
+                .thenCompose(relation -> {
+                    if (relation == null) {
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return plugin.getGuildService().updateGuildRelationStatusAsync(relation.getId(), GuildRelation.RelationStatus.ACTIVE);
+                })
+                .thenAccept(success -> {
+                    if (success) {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.accept-success", "&a已接受 {guild} 的关系请求！")
+                            .replace("{guild}", targetGuildName);
+                        player.sendMessage(ColorUtils.colorize(message));
+                    } else {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.accept-failed", "&c接受关系失败！可能没有待处理的关系请求。");
+                        player.sendMessage(ColorUtils.colorize(message));
+                    }
+                });
+        });
+    }
+    
+    /**
+     * 处理拒绝关系
+     */
+    private void handleRelationReject(Player player, Guild guild, String targetGuildName) {
+        // 获取目标工会
+        plugin.getGuildService().getGuildByNameAsync(targetGuildName).thenAccept(targetGuild -> {
+            if (targetGuild == null) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("relation.target-not-found", "&c目标工会 {guild} 不存在！")
+                    .replace("{guild}", targetGuildName);
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            // 获取关系然后拒绝
+            plugin.getGuildService().getGuildRelationAsync(guild.getId(), targetGuild.getId())
+                .thenCompose(relation -> {
+                    if (relation == null) {
+                        return CompletableFuture.completedFuture(false);
+                    }
+                    return plugin.getGuildService().updateGuildRelationStatusAsync(relation.getId(), GuildRelation.RelationStatus.CANCELLED);
+                })
+                .thenAccept(success -> {
+                    if (success) {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.reject-success", "&c已拒绝 {guild} 的关系请求！")
+                            .replace("{guild}", targetGuildName);
+                        player.sendMessage(ColorUtils.colorize(message));
+                    } else {
+                        String message = plugin.getConfigManager().getMessagesConfig().getString("relation.reject-failed", "&c拒绝关系失败！可能没有待处理的关系请求。");
+                        player.sendMessage(ColorUtils.colorize(message));
+                    }
+                });
+        });
     }
     
     /**
@@ -1260,6 +1618,32 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
                         }
                     });
                 });
+            });
+        });
+    }
+    
+    /**
+     * 处理日志查看命令
+     */
+    private void handleLogs(Player player, String[] args) {
+        // 获取玩家工会
+        plugin.getGuildService().getPlayerGuildAsync(player.getUniqueId()).thenAccept(guild -> {
+            if (guild == null) {
+                String message = plugin.getConfigManager().getMessagesConfig().getString("general.no-guild", "&c您还没有加入工会！");
+                player.sendMessage(ColorUtils.colorize(message));
+                return;
+            }
+            
+            // 检查权限
+            plugin.getGuildService().getGuildMemberAsync(guild.getId(), player.getUniqueId()).thenAccept(member -> {
+                if (member == null) {
+                    String message = plugin.getConfigManager().getMessagesConfig().getString("general.no-permission", "&c权限不足！");
+                    player.sendMessage(ColorUtils.colorize(message));
+                    return;
+                }
+                
+                // 打开工会日志GUI
+                plugin.getGuiManager().openGUI(player, new com.guild.gui.GuildLogsGUI(plugin, guild, player));
             });
         });
     }

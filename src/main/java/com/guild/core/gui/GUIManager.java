@@ -130,7 +130,7 @@ public class GUIManager implements Listener {
         // 防止快速点击
         long currentTime = System.currentTimeMillis();
         Long lastClick = lastClickTime.get(player.getUniqueId());
-        if (lastClick != null && currentTime - lastClick < 100) { // 100ms防抖
+        if (lastClick != null && currentTime - lastClick < 200) { // 200ms防抖
             event.setCancelled(true);
             return;
         }
@@ -144,9 +144,8 @@ public class GUIManager implements Listener {
             int slot = event.getRawSlot();
             ItemStack clickedItem = event.getCurrentItem();
             
-            if (clickedItem != null) {
-                gui.onClick(player, slot, clickedItem, event.getClick());
-            }
+            // 处理所有点击，包括空物品的点击
+            gui.onClick(player, slot, clickedItem, event.getClick());
         } catch (Exception e) {
             logger.severe("处理GUI点击时发生错误: " + e.getMessage());
             e.printStackTrace();
@@ -192,16 +191,11 @@ public class GUIManager implements Listener {
         try {
             GUI gui = openGuis.get(player.getUniqueId());
             if (gui != null) {
-                // 重新创建库存
-                Inventory inventory = Bukkit.createInventory(null, gui.getSize(), gui.getTitle());
+                // 关闭当前GUI
+                closeGUI(player);
                 
-                // 重新设置GUI内容
-                gui.setupInventory(inventory);
-                
-                // 如果玩家当前打开了GUI，更新库存
-                if (player.getOpenInventory() != null && player.getOpenInventory().getTopInventory() != null) {
-                    player.getOpenInventory().getTopInventory().setContents(inventory.getContents());
-                }
+                // 重新打开GUI
+                openGUI(player, gui);
                 
                 logger.info("玩家 " + player.getName() + " 的GUI已刷新: " + gui.getClass().getSimpleName());
             }

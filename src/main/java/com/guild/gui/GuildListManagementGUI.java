@@ -4,6 +4,7 @@ import com.guild.GuildPlugin;
 import com.guild.core.gui.GUI;
 import com.guild.core.utils.ColorUtils;
 import com.guild.models.Guild;
+import com.guild.gui.GuildDetailGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -197,8 +198,8 @@ public class GuildListManagementGUI implements GUI {
     }
     
     private void openGuildDetailGUI(Player player, Guild guild) {
-        // TODO: 实现工会详情GUI
-        player.sendMessage(ColorUtils.colorize("&e工会详情功能开发中..."));
+        // 打开工会详情GUI
+        plugin.getGuiManager().openGUI(player, new GuildDetailGUI(plugin, guild, player));
     }
     
     private void deleteGuild(Player player, Guild guild) {

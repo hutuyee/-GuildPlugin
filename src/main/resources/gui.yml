@@ -219,6 +219,11 @@ member-management:
       lore:
         - "&7查看上一页"
 
+# 成员详情界面
+member-details:
+  title: "&6成员详情 - {member_name}"
+  size: 54
+
 # 申请管理界面
 application-management:
   title: "&6申请管理"
@@ -632,57 +637,7 @@ admin-gui:
       lore:
         - "&7返回主菜单"
 
-# 工会关系GUI
-guild-relations:
-  title: "&6工会关系"
-  size: 54
-  items:
-    ally:
-      slot: 20
-      material: LIME_WOOL
-      name: "&a盟友关系"
-      lore:
-        - "&7查看盟友工会"
-        - "&7点击管理盟友"
-    
-    enemy:
-      slot: 22
-      material: RED_WOOL
-      name: "&c敌对关系"
-      lore:
-        - "&7查看敌对工会"
-        - "&7点击管理敌对"
-    
-    war:
-      slot: 24
-      material: BLACK_WOOL
-      name: "&4开战状态"
-      lore:
-        - "&7查看开战工会"
-        - "&7点击管理战争"
-    
-    neutral:
-      slot: 29
-      material: GRAY_WOOL
-      name: "&7中立关系"
-      lore:
-        - "&7查看中立工会"
-        - "&7点击管理中立"
-    
-    create-relation:
-      slot: 31
-      material: EMERALD_BLOCK
-      name: "&a创建关系"
-      lore:
-        - "&7创建新的工会关系"
-        - "&7盟友、敌对、开战等"
-    
-    back:
-      slot: 49
-      material: ARROW
-      name: "&c返回"
-      lore:
-        - "&7返回上级菜单"
+
 
 # 工会经济GUI
 guild-economy:
@@ -744,3 +699,18 @@ guild-economy:
       name: "&c返回"
       lore:
         - "&7返回上级菜单"
+
+# 工会详情界面
+guild-detail:
+  title: "&6工会详情 - {guild_name}"
+  size: 54
+
+# 系统设置界面
+system-settings:
+  title: "&4系统设置"
+  size: 54
+
+# 工会日志界面
+guild-logs:
+  title: "&6工会日志 - {guild_name}"
+  size: 54

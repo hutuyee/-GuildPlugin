@@ -9,6 +9,7 @@ import com.guild.models.GuildInvitation;
 import com.guild.models.GuildRelation;
 import com.guild.models.GuildEconomy;
 import com.guild.models.GuildContribution;
+import com.guild.models.GuildLog;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -82,7 +83,15 @@ public class GuildService {
                     if ((Integer) guildId > 0) {
                         // 添加会长为工会成员
                         return addGuildMemberAsync((Integer) guildId, leaderUuid, leaderName, GuildMember.Role.LEADER)
-                            .thenApply(success -> success);
+                            .thenCompose(success -> {
+                                if (success) {
+                                    // 记录工会创建日志
+                                    return logGuildActionAsync((Integer) guildId, name, leaderUuid.toString(), leaderName,
+                                        GuildLog.LogType.GUILD_CREATED, "创建工会", "工会名称: " + name + ", 标签: " + tag)
+                                        .thenApply(logSuccess -> success);
+                                }
+                                return CompletableFuture.completedFuture(success);
+                            });
                     }
                     return CompletableFuture.completedFuture(false);
                 });
@@ -153,6 +162,10 @@ public class GuildService {
                                         logger.warning("退款给会长时发生错误: " + e.getMessage());
                                     }
                                 }
+                                
+                                // 记录工会解散日志
+                                logGuildActionAsync(guildId, guild.getName(), guild.getLeaderUuid().toString(), guild.getLeaderName(),
+                                    GuildLog.LogType.GUILD_DISSOLVED, "工会解散", "工会余额: " + guildBalance + " 金币");
                                 
                                 return true;
                             }
@@ -280,6 +293,15 @@ public class GuildService {
                     int affectedRows = stmt.executeUpdate();
                     if (affectedRows > 0) {
                         logger.info("玩家 " + playerName + " 加入工会 (ID: " + guildId + ")");
+                        
+                        // 记录成员加入日志
+                        getGuildByIdAsync(guildId).thenAccept(guild -> {
+                            if (guild != null) {
+                                logGuildActionAsync(guildId, guild.getName(), playerUuid.toString(), playerName,
+                                    GuildLog.LogType.MEMBER_JOINED, "成员加入", "玩家: " + playerName + ", 职位: " + role.getDisplayName());
+                            }
+                        });
+                        
                         return true;
                     }
                 }
@@ -342,6 +364,22 @@ public class GuildService {
                             int affectedRows = stmt.executeUpdate();
                             if (affectedRows > 0) {
                                 logger.info("玩家 " + member.getPlayerName() + " 离开工会 (ID: " + member.getGuildId() + ")");
+                                
+                                // 记录成员离开日志
+                                getGuildByIdAsync(member.getGuildId()).thenAccept(guild -> {
+                                    if (guild != null) {
+                                        GuildLog.LogType logType = playerUuid.equals(requesterUuid) ? 
+                                            GuildLog.LogType.MEMBER_LEFT : GuildLog.LogType.MEMBER_KICKED;
+                                        String description = playerUuid.equals(requesterUuid) ? "成员主动离开" : "成员被踢出";
+                                        String details = "玩家: " + member.getPlayerName() + 
+                                            (playerUuid.equals(requesterUuid) ? "" : ", 操作者: " + requester.getPlayerName());
+                                        
+                                        logGuildActionAsync(member.getGuildId(), guild.getName(), 
+                                            requesterUuid.toString(), requester.getPlayerName(),
+                                            logType, description, details);
+                                    }
+                                });
+                                
                                 return true;
                             }
                         }
@@ -395,6 +433,24 @@ public class GuildService {
                             int affectedRows = stmt.executeUpdate();
                             if (affectedRows > 0) {
                                 logger.info("玩家 " + member.getPlayerName() + " 角色更新为: " + newRole.name());
+                                
+                                // 记录角色变更日志
+                                getGuildByIdAsync(member.getGuildId()).thenAccept(guild -> {
+                                    if (guild != null) {
+                                        GuildLog.LogType logType = newRole == GuildMember.Role.LEADER ? 
+                                            GuildLog.LogType.LEADER_TRANSFERRED : 
+                                            (newRole == GuildMember.Role.OFFICER ? GuildLog.LogType.MEMBER_PROMOTED : GuildLog.LogType.MEMBER_DEMOTED);
+                                        String description = newRole == GuildMember.Role.LEADER ? "会长转让" : 
+                                            (newRole == GuildMember.Role.OFFICER ? "成员升职" : "成员降职");
+                                        String details = "玩家: " + member.getPlayerName() + ", 新职位: " + newRole.getDisplayName() + 
+                                            ", 操作者: " + requester.getPlayerName();
+                                        
+                                        logGuildActionAsync(member.getGuildId(), guild.getName(), 
+                                            requesterUuid.toString(), requester.getPlayerName(),
+                                            logType, description, details);
+                                    }
+                                });
+                                
                                 return true;
                             }
                         }
@@ -874,6 +930,15 @@ public class GuildService {
                     int affectedRows = stmt.executeUpdate();
                     if (affectedRows > 0) {
                         logger.info("玩家 " + playerName + " 提交了加入工会申请 (工会ID: " + guildId + ")");
+                        
+                        // 记录申请提交日志
+                        getGuildByIdAsync(guildId).thenAccept(guild -> {
+                            if (guild != null) {
+                                logGuildActionAsync(guildId, guild.getName(), playerUuid.toString(), playerName,
+                                    GuildLog.LogType.APPLICATION_SUBMITTED, "申请提交", "申请消息: " + message);
+                            }
+                        });
+                        
                         return true;
                     }
                 }
@@ -925,6 +990,21 @@ public class GuildService {
                             int affectedRows = stmt.executeUpdate();
                             if (affectedRows > 0) {
                                 logger.info("申请处理完成: " + application.getPlayerName() + " -> " + status.name());
+                                
+                                // 记录申请处理日志
+                                getGuildByIdAsync(application.getGuildId()).thenAccept(guild -> {
+                                    if (guild != null) {
+                                        GuildLog.LogType logType = status == GuildApplication.ApplicationStatus.APPROVED ? 
+                                            GuildLog.LogType.APPLICATION_ACCEPTED : GuildLog.LogType.APPLICATION_REJECTED;
+                                        String description = status == GuildApplication.ApplicationStatus.APPROVED ? "申请接受" : "申请拒绝";
+                                        String details = "申请人: " + application.getPlayerName() + ", 处理者: " + processor.getPlayerName();
+                                        
+                                        logGuildActionAsync(application.getGuildId(), guild.getName(), 
+                                            processorUuid.toString(), processor.getPlayerName(),
+                                            logType, description, details);
+                                    }
+                                });
+                                
                                 return true;
                             }
                         }
@@ -1926,6 +2006,19 @@ public class GuildService {
                                 checkAndUpgradeGuildLevel(guildId, balance);
                             });
                             
+                            // 记录资金变更日志
+                            double oldBalance = guild.getBalance();
+                            double change = balance - oldBalance;
+                            if (change != 0) {
+                                GuildLog.LogType logType = change > 0 ? GuildLog.LogType.FUND_DEPOSITED : GuildLog.LogType.FUND_WITHDRAWN;
+                                String description = change > 0 ? "资金存入" : "资金取出";
+                                String details = "变更金额: " + (change > 0 ? "+" : "") + change + " 金币, 新余额: " + balance + " 金币";
+                                
+                                // 这里需要获取操作者信息，暂时使用系统记录
+                                logGuildActionAsync(guildId, guild.getName(), "SYSTEM", "系统",
+                                    logType, description, details);
+                            }
+                            
                             return true;
                         }
                     }
@@ -1989,23 +2082,38 @@ public class GuildService {
      * 更新工会冻结状态 (异步)
      */
     public CompletableFuture<Boolean> updateGuildFrozenStatusAsync(int guildId, boolean frozen) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                String sql = "UPDATE guilds SET frozen = ? WHERE id = ?";
-                
-                try (Connection conn = databaseManager.getConnection();
-                     PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    
-                    stmt.setBoolean(1, frozen);
-                    stmt.setInt(2, guildId);
-                    
-                    int affectedRows = stmt.executeUpdate();
-                    return affectedRows > 0;
-                }
-            } catch (SQLException e) {
-                logger.severe("更新工会冻结状态时发生错误: " + e.getMessage());
-                return false;
+        return getGuildByIdAsync(guildId).thenCompose(guild -> {
+            if (guild == null) {
+                return CompletableFuture.completedFuture(false);
             }
+            
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    String sql = "UPDATE guilds SET frozen = ? WHERE id = ?";
+                    
+                    try (Connection conn = databaseManager.getConnection();
+                         PreparedStatement stmt = conn.prepareStatement(sql)) {
+                        
+                        stmt.setBoolean(1, frozen);
+                        stmt.setInt(2, guildId);
+                        
+                        int affectedRows = stmt.executeUpdate();
+                        if (affectedRows > 0) {
+                            // 记录冻结状态变更日志
+                            GuildLog.LogType logType = frozen ? GuildLog.LogType.GUILD_FROZEN : GuildLog.LogType.GUILD_UNFROZEN;
+                            String description = frozen ? "工会冻结" : "工会解冻";
+                            
+                            logGuildActionAsync(guildId, guild.getName(), "SYSTEM", "系统",
+                                logType, description, "操作: " + (frozen ? "冻结" : "解冻"));
+                            
+                            return true;
+                        }
+                    }
+                } catch (SQLException e) {
+                    logger.severe("更新工会冻结状态时发生错误: " + e.getMessage());
+                }
+                return false;
+            });
         });
     }
 
@@ -2042,6 +2150,10 @@ public class GuildService {
                             int affectedRows = stmt.executeUpdate();
                             if (affectedRows > 0) {
                                 logger.info("工会自动升级成功: " + guild.getName() + " (ID: " + guildId + ") 等级: " + currentLevel + " -> " + newLevel);
+                                
+                                // 记录工会升级日志
+                                logGuildActionAsync(guildId, guild.getName(), "SYSTEM", "系统",
+                                    GuildLog.LogType.GUILD_LEVEL_UP, "工会升级", "等级: " + currentLevel + " -> " + newLevel + ", 最大成员数: " + newMaxMembers);
                                 
                                 // 通知工会成员升级成功
                                 notifyGuildMembersOfUpgrade(guildId, newLevel, newMaxMembers);
@@ -2119,5 +2231,203 @@ public class GuildService {
             logger.warning("通知工会成员升级时发生错误: " + throwable.getMessage());
             return null;
         });
+    }
+    
+    // ==================== 工会日志系统 ====================
+    
+    /**
+     * 记录工会日志 (异步)
+     */
+    public CompletableFuture<Boolean> logGuildActionAsync(int guildId, String guildName, String playerUuid, 
+                                                        String playerName, GuildLog.LogType logType, 
+                                                        String description, String details) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String sql = "INSERT INTO guild_logs (guild_id, guild_name, player_uuid, player_name, log_type, description, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, " +
+                            (plugin.getDatabaseManager().getDatabaseType() == DatabaseManager.DatabaseType.SQLITE ? 
+                             "datetime('now')" : "NOW()") + ")";
+                
+                try (Connection conn = databaseManager.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    
+                    stmt.setInt(1, guildId);
+                    stmt.setString(2, guildName);
+                    stmt.setString(3, playerUuid);
+                    stmt.setString(4, playerName);
+                    stmt.setString(5, logType.name());
+                    stmt.setString(6, description);
+                    stmt.setString(7, details);
+                    
+                    int affectedRows = stmt.executeUpdate();
+                    return affectedRows > 0;
+                }
+            } catch (SQLException e) {
+                logger.severe("记录工会日志时发生错误: " + e.getMessage());
+                return false;
+            }
+        });
+    }
+    
+    /**
+     * 记录工会日志 (同步包装器)
+     */
+    public boolean logGuildAction(int guildId, String guildName, String playerUuid, String playerName, 
+                                GuildLog.LogType logType, String description, String details) {
+        try {
+            return logGuildActionAsync(guildId, guildName, playerUuid, playerName, logType, description, details).get();
+        } catch (Exception e) {
+            logger.severe("记录工会日志时发生异常: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 获取工会日志列表 (异步)
+     */
+    public CompletableFuture<List<GuildLog>> getGuildLogsAsync(int guildId, int limit, int offset) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<GuildLog> logs = new ArrayList<>();
+            try {
+                String sql = "SELECT * FROM guild_logs WHERE guild_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+                
+                try (Connection conn = databaseManager.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    
+                    stmt.setInt(1, guildId);
+                    stmt.setInt(2, limit);
+                    stmt.setInt(3, offset);
+                    
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            GuildLog log = createGuildLogFromResultSet(rs);
+                            logs.add(log);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                logger.severe("获取工会日志时发生错误: " + e.getMessage());
+            }
+            return logs;
+        });
+    }
+    
+    /**
+     * 获取工会日志列表 (同步包装器)
+     */
+    public List<GuildLog> getGuildLogs(int guildId, int limit, int offset) {
+        try {
+            return getGuildLogsAsync(guildId, limit, offset).get();
+        } catch (Exception e) {
+            logger.severe("获取工会日志时发生异常: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 获取工会日志总数 (异步)
+     */
+    public CompletableFuture<Integer> getGuildLogsCountAsync(int guildId) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String sql = "SELECT COUNT(*) FROM guild_logs WHERE guild_id = ?";
+                
+                try (Connection conn = databaseManager.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    
+                    stmt.setInt(1, guildId);
+                    
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next()) {
+                            return rs.getInt(1);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                logger.severe("获取工会日志总数时发生错误: " + e.getMessage());
+            }
+            return 0;
+        });
+    }
+    
+    /**
+     * 获取工会日志总数 (同步包装器)
+     */
+    public int getGuildLogsCount(int guildId) {
+        try {
+            return getGuildLogsCountAsync(guildId).get();
+        } catch (Exception e) {
+            logger.severe("获取工会日志总数时发生异常: " + e.getMessage());
+            return 0;
+        }
+    }
+    
+    /**
+     * 从ResultSet创建GuildLog对象
+     */
+    private GuildLog createGuildLogFromResultSet(ResultSet rs) throws SQLException {
+        GuildLog log = new GuildLog();
+        log.setId(rs.getInt("id"));
+        log.setGuildId(rs.getInt("guild_id"));
+        log.setGuildName(rs.getString("guild_name"));
+        log.setPlayerUuid(rs.getString("player_uuid"));
+        log.setPlayerName(rs.getString("player_name"));
+        log.setLogType(GuildLog.LogType.valueOf(rs.getString("log_type")));
+        log.setDescription(rs.getString("description"));
+        log.setDetails(rs.getString("details"));
+        
+        String createdAtStr = rs.getString("created_at");
+        if (createdAtStr != null) {
+            try {
+                if (plugin.getDatabaseManager().getDatabaseType() == DatabaseManager.DatabaseType.SQLITE) {
+                    log.setCreatedAt(LocalDateTime.parse(createdAtStr, 
+                        java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                } else {
+                    log.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
+                }
+            } catch (Exception e) {
+                logger.warning("解析日志创建时间时发生错误: " + e.getMessage());
+            }
+        }
+        
+        return log;
+    }
+    
+    /**
+     * 清理旧日志 (异步)
+     */
+    public CompletableFuture<Integer> cleanOldLogsAsync(int daysToKeep) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String sql;
+                if (plugin.getDatabaseManager().getDatabaseType() == DatabaseManager.DatabaseType.SQLITE) {
+                    sql = "DELETE FROM guild_logs WHERE created_at < datetime('now', '-" + daysToKeep + " days')";
+                } else {
+                    sql = "DELETE FROM guild_logs WHERE created_at < DATE_SUB(NOW(), INTERVAL " + daysToKeep + " DAY)";
+                }
+                
+                try (Connection conn = databaseManager.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    
+                    int affectedRows = stmt.executeUpdate();
+                    logger.info("清理了 " + affectedRows + " 条旧日志记录");
+                    return affectedRows;
+                }
+            } catch (SQLException e) {
+                logger.severe("清理旧日志时发生错误: " + e.getMessage());
+                return 0;
+            }
+        });
+    }
+    
+    /**
+     * 清理旧日志 (同步包装器)
+     */
+    public int cleanOldLogs(int daysToKeep) {
+        try {
+            return cleanOldLogsAsync(daysToKeep).get();
+        } catch (Exception e) {
+            logger.severe("清理旧日志时发生异常: " + e.getMessage());
+            return 0;
+        }
     }
 }

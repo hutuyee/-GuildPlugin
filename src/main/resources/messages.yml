@@ -135,6 +135,37 @@ apply:
   failed: "&c申请提交失败！"
   already-applied: "&c您已经申请过这个工会了！"
 
+# 工会关系相关消息
+relation:
+  no-guild: "&c您还没有加入工会！"
+  only-leader: "&c只有工会会长才能管理工会关系！"
+  help-title: "&6=== 工会关系管理 ==="
+  help-list: "&e/guild relation list &7- 查看所有关系"
+  help-create: "&e/guild relation create <工会> <类型> &7- 创建关系"
+  help-delete: "&e/guild relation delete <工会> &7- 删除关系"
+  help-accept: "&e/guild relation accept <工会> &7- 接受关系请求"
+  help-reject: "&e/guild relation reject <工会> &7- 拒绝关系请求"
+  help-types: "&7关系类型: &eally(盟友), enemy(敌对), war(开战), truce(停战), neutral(中立)"
+  create-usage: "&e用法: /guild relation create <目标工会> <关系类型>"
+  delete-usage: "&e用法: /guild relation delete <目标工会>"
+  accept-usage: "&e用法: /guild relation accept <目标工会>"
+  reject-usage: "&e用法: /guild relation reject <目标工会>"
+  unknown-subcommand: "&c未知的子命令！使用 /guild relation 查看帮助。"
+  no-relations: "&7您的工会还没有任何关系。"
+  list-title: "&6=== 工会关系列表 ==="
+  list-format: "&e{other_guild} &7- {type} ({status})"
+  invalid-type: "&c无效的关系类型！有效类型: ally, enemy, war, truce, neutral"
+  target-not-found: "&c目标工会 {guild} 不存在！"
+  cannot-relation-self: "&c不能与自己建立关系！"
+  create-success: "&a已向 {guild} 发送 {type} 关系请求！"
+  create-failed: "&c创建关系失败！可能已经存在关系。"
+  delete-success: "&a已删除与 {guild} 的关系！"
+  delete-failed: "&c删除关系失败！可能关系不存在。"
+  accept-success: "&a已接受 {guild} 的关系请求！"
+  accept-failed: "&c接受关系失败！可能没有待处理的关系请求。"
+  reject-success: "&c已拒绝 {guild} 的关系请求！"
+  reject-failed: "&c拒绝关系失败！可能没有待处理的关系请求。"
+
 # 权限相关消息
 permissions:
   promote:
@@ -309,6 +340,14 @@ gui:
   click-to-confirm: "&7点击确认"
   click-to-cancel: "&7点击取消"
   
+  # 成员详情
+  confirm-kick: "&c确定要踢出成员 {member} 吗？输入 &f/guild kick {member} confirm &c确认"
+  confirm-promote: "&a确定要提升成员 {member} 为官员吗？输入 &f/guild promote {member} confirm &a确认"
+  confirm-demote: "&c确定要降级成员 {member} 吗？输入 &f/guild demote {member} confirm &c确认"
+  cannot-kick-leader: "&c不能踢出工会会长"
+  cannot-modify-leader: "&c不能修改工会会长的职位"
+  open-chat: "&e请输入要发送给 {member} 的消息:"
+  
   # 输入相关
   input-name: "&a请在聊天框中输入工会名称（3-20字符）："
   input-description: "&a请在聊天框中输入新的工会描述（最多100字符）："
@@ -347,6 +386,7 @@ help:
   decline: "&e/guild decline <邀请者> &7- 拒绝工会邀请"
   sethome: "&e/guild sethome &7- 设置工会家"
   home: "&e/guild home &7- 传送到工会家"
+  logs: "&e/guild logs &7- 查看工会操作日志"
   help: "&e/guild help &7- 显示此帮助信息"
 
 
@@ -364,54 +404,7 @@ errors:
     unknown-error: "&c发生未知错误！"
     plugin-disabled: "&c插件已禁用！"
 
-# 工会关系系统消息
-relations:
-  # 关系类型
-  ally: "盟友"
-  enemy: "敌对"
-  war: "开战"
-  truce: "停战"
-  neutral: "中立"
-  
-  # 关系操作
-  create-success: "&a工会关系创建成功！"
-  create-failed: "&c工会关系创建失败！"
-  update-success: "&a工会关系更新成功！"
-  update-failed: "&c工会关系更新失败！"
-  delete-success: "&a工会关系删除成功！"
-  delete-failed: "&c工会关系删除失败！"
-  accept-success: "&a已接受与 {guild} 的关系！"
-  accept-failed: "&c接受关系失败！"
-  reject-success: "&c已拒绝与 {guild} 的关系！"
-  reject-failed: "&c拒绝关系失败！"
-  cancel-success: "&c已取消与 {guild} 的关系！"
-  cancel-failed: "&c取消关系失败！"
-  truce-end: "&a与 {guild} 的停战已结束，关系转为中立！"
-  truce-end-failed: "&c结束停战失败！"
-  truce-proposed: "&e已向 {guild} 提议停战！"
-  truce-propose-failed: "&c提议停战失败！"
-  select-both: "&c请先选择关系类型和目标工会！"
-  target-selected: "&a已选择目标工会: {guild}"
-  type-selected: "&a已选择关系类型: {type}"
-  target-not-found: "&c目标工会不存在！"
-  already-exists: "&c与 {guild} 的关系已存在！"
-  
-  # 关系状态
-  pending: "待处理"
-  active: "活跃"
-  expired: "已过期"
-  cancelled: "已取消"
-  
-  # 开战提示
-  war-notification: "&4[工会战争] &c您的工会与 {guild} 处于开战状态！"
-  war-start: "&4[工会战争] &c工会战争已开始！"
-  war-end: "&4[工会战争] &a工会战争已结束！"
-  
-  # 关系管理
-  relation-exists: "&c工会关系已存在！"
-  relation-not-found: "&c工会关系不存在！"
-  cannot-relation-self: "&c不能与自己建立关系！"
-  permission-denied: "&c只有工会会长才能管理关系！"
+
 
 # 工会经济系统消息
 economy:
@@ -468,6 +461,83 @@ economy:
   level-8-requirement: "100000-150000 金币"
   level-9-requirement: "150000-200000 金币"
   level-10-requirement: "200000+ 金币"
+
+# 工会详情相关消息
+guild-detail:
+  title: "&6工会详情"
+  guild-info: "&e工会信息"
+  economy-info: "&e经济信息"
+  leader-info: "&6工会会长"
+  description-info: "&e工会描述"
+  members-title: "&a工会成员"
+  more-members: "&e更多成员"
+  freeze-guild: "&c冻结工会"
+  unfreeze-guild: "&a解冻工会"
+  delete-guild: "&4删除工会"
+  economy-management: "&e资金管理"
+  refresh-info: "&a刷新信息"
+  back: "&c返回"
+  
+  # 状态信息
+  status-normal: "&a正常"
+  status-frozen: "&c已冻结"
+  online-status: "&a在线"
+  offline-status: "&7离线"
+  
+  # 操作提示
+  freeze-success: "&a工会 {guild} 已被冻结！"
+  unfreeze-success: "&a工会 {guild} 已被解冻！"
+  freeze-failed: "&c冻结/解冻操作失败！"
+  delete-confirm: "&c您确定要删除工会 {guild} 吗？"
+  delete-command: "&c输入 &f/guildadmin delete {guild} confirm &c确认删除"
+  no-description: "&7暂无描述"
+
+# 系统设置相关消息
+system-settings:
+  title: "&4系统设置"
+  debug-mode: "&e详细后台信息显示"
+  auto-save: "&e自动保存数据"
+  economy-system: "&e经济系统"
+  relation-system: "&e工会关系系统"
+  level-system: "&e工会等级系统"
+  application-system: "&e申请加入系统"
+  invite-system: "&e邀请系统"
+  guild-home-system: "&e工会家系统"
+  reload-configs: "&a重载配置"
+  database-maintenance: "&b数据库维护"
+  backup-data: "&6备份数据"
+  save-settings: "&a保存设置"
+  
+  # 状态信息
+  enabled: "&a已启用"
+  disabled: "&c已禁用"
+  current-status: "&7当前状态: {status}"
+  
+  # 操作提示
+  toggle-success: "&a{feature}已{action}！"
+  toggle-enabled: "启用"
+  toggle-disabled: "禁用"
+  reload-success: "&a配置重载成功！"
+  reload-failed: "&c配置重载失败：{error}"
+  save-success: "&a设置保存成功！"
+  save-failed: "&c设置保存失败：{error}"
+  
+  # 功能描述
+  debug-description: "&7启用后会在控制台显示详细的调试信息"
+  auto-save-description: "&7定期自动保存工会数据，防止数据丢失"
+  economy-description: "&7工会经济功能开关，包括存款、取款、转账等"
+  relation-description: "&7工会关系功能开关，包括盟友、敌对、开战等"
+  level-description: "&7工会等级功能开关，包括自动升级、成员限制等"
+  application-description: "&7申请加入工会功能开关，玩家需要申请才能加入工会"
+  invite-description: "&7工会邀请功能开关，会长可以邀请玩家加入工会"
+  home-description: "&7工会家功能开关，包括设置和传送到工会家"
+  
+  # 维护功能
+  maintenance-dev: "&e数据库维护功能开发中..."
+  backup-dev: "&e数据备份功能开发中..."
+
+# 工会日志相关消息
+log-details: "&6=== 日志详情 ==="
 
 
 

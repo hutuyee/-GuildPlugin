@@ -232,6 +232,22 @@ public class DatabaseManager {
                 FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
             )
         """);
+        
+        // 工会日志表
+        executeUpdate("""
+            CREATE TABLE IF NOT EXISTS guild_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                guild_id INTEGER NOT NULL,
+                guild_name TEXT NOT NULL,
+                player_uuid TEXT NOT NULL,
+                player_name TEXT NOT NULL,
+                log_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                details TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+            )
+        """);
     }
     
     /**
@@ -348,6 +364,22 @@ public class DatabaseManager {
                 amount DOUBLE NOT NULL,
                 contribution_type VARCHAR(20) NOT NULL,
                 description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+            )
+        """);
+        
+        // 工会日志表
+        executeUpdate("""
+            CREATE TABLE IF NOT EXISTS guild_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guild_id INT NOT NULL,
+                guild_name VARCHAR(50) NOT NULL,
+                player_uuid VARCHAR(36) NOT NULL,
+                player_name VARCHAR(16) NOT NULL,
+                log_type VARCHAR(50) NOT NULL,
+                description TEXT NOT NULL,
+                details TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
             )

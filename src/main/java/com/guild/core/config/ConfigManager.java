@@ -97,6 +97,13 @@ public class ConfigManager {
     }
     
     /**
+     * 保存主配置文件
+     */
+    public void saveMainConfig() {
+        saveConfig("config.yml");
+    }
+    
+    /**
      * 保存配置文件
      */
     public void saveConfig(String fileName) {

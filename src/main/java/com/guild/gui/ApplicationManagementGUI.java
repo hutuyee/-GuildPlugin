@@ -95,14 +95,19 @@ public class ApplicationManagementGUI implements GUI {
      * 设置功能按钮
      */
     private void setupFunctionButtons(Inventory inventory) {
-        // 待处理申请按钮
-        ItemStack pendingApplications = createItem(
-            Material.PAPER,
-            ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("application-management.items.pending-applications.name", "&e待处理申请")),
-            ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("application-management.items.pending-applications.lore.1", "&7查看待处理的申请")),
-            ColorUtils.colorize("&f{pending_count} 个申请")
-        );
-        inventory.setItem(20, pendingApplications);
+        // 异步获取待处理申请数量
+        plugin.getGuildService().getPendingApplicationsAsync(guild.getId()).thenAccept(applications -> {
+            int pendingCount = applications != null ? applications.size() : 0;
+            
+            // 待处理申请按钮
+            ItemStack pendingApplications = createItem(
+                Material.PAPER,
+                ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("application-management.items.pending-applications.name", "&e待处理申请")),
+                ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("application-management.items.pending-applications.lore.1", "&7查看待处理的申请")),
+                ColorUtils.colorize("&f" + pendingCount + " 个申请")
+            );
+            inventory.setItem(20, pendingApplications);
+        });
         
         // 申请历史按钮
         ItemStack applicationHistory = createItem(

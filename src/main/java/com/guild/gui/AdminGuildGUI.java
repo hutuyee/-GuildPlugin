@@ -4,6 +4,7 @@ import com.guild.GuildPlugin;
 import com.guild.core.gui.GUI;
 import com.guild.core.utils.ColorUtils;
 import com.guild.models.Guild;
+import com.guild.gui.SystemSettingsGUI;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -181,8 +182,8 @@ public class AdminGuildGUI implements GUI {
     }
     
     private void openSystemSettings(Player player) {
-        // TODO: 实现系统设置GUI
-        player.sendMessage(ColorUtils.colorize("&e系统设置功能开发中..."));
+        // 打开系统设置GUI
+        plugin.getGuiManager().openGUI(player, new SystemSettingsGUI(plugin, player));
     }
     
     private void fillBorder(Inventory inventory) {

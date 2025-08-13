@@ -348,16 +348,8 @@ public class MemberManagementGUI implements GUI {
      * 显示成员详情
      */
     private void showMemberDetails(Player player, GuildMember member) {
-        List<String> details = new ArrayList<>();
-        details.add(ColorUtils.colorize("&6=== 成员详情 ==="));
-        details.add(ColorUtils.colorize("&7名称: &f" + member.getPlayerName()));
-        details.add(ColorUtils.colorize("&7角色: &f" + member.getRole().getDisplayName()));
-        details.add(ColorUtils.colorize("&7加入时间: &f" + (member.getJoinedAt() != null ? member.getJoinedAt().toString() : "未知")));
-        details.add(ColorUtils.colorize("&7权限: &f" + getRolePermissions(member.getRole())));
-        
-        for (String detail : details) {
-            player.sendMessage(detail);
-        }
+        // 打开成员详情GUI
+        plugin.getGuiManager().openGUI(player, new MemberDetailsGUI(plugin, guild, member, player));
     }
     
     /**
