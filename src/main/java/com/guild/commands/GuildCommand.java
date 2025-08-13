@@ -103,6 +103,9 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             case "logs":
                 handleLogs(player, args);
                 break;
+            case "placeholder":
+                handlePlaceholder(player, args);
+                break;
             case "help":
                 handleHelp(player);
                 break;
@@ -120,7 +123,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         
         if (args.length == 1) {
             List<String> subCommands = Arrays.asList(
-                "create", "info", "members", "invite", "kick", "promote", "demote", "accept", "decline", "leave", "delete", "sethome", "home", "relation", "economy", "deposit", "withdraw", "transfer", "logs", "help"
+                "create", "info", "members", "invite", "kick", "promote", "demote", "accept", "decline", "leave", "delete", "sethome", "home", "relation", "economy", "deposit", "withdraw", "transfer", "logs", "placeholder", "help"
             );
             
             for (String subCommand : subCommands) {
@@ -1646,5 +1649,30 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
                 plugin.getGuiManager().openGUI(player, new com.guild.gui.GuildLogsGUI(plugin, guild, player));
             });
         });
+    }
+    
+    /**
+     * 处理占位符测试命令
+     */
+    private void handlePlaceholder(Player player, String[] args) {
+        if (!player.hasPermission("guild.admin")) {
+            player.sendMessage(ColorUtils.colorize(plugin.getConfigManager().getMessagesConfig().getString("general.no-permission", "&c您没有权限执行此操作！")));
+            return;
+        }
+        
+        if (args.length < 2) {
+            player.sendMessage(ColorUtils.colorize("&c用法: /guild placeholder <变量名>"));
+            player.sendMessage(ColorUtils.colorize("&e示例: /guild placeholder name"));
+            player.sendMessage(ColorUtils.colorize("&e可用变量: name, tag, description, leader, membercount, role, hasguild, isleader, isofficer"));
+            return;
+        }
+        
+        String placeholder = "%guild_" + args[1] + "%";
+        String result = me.clip.placeholderapi.PlaceholderAPI.setPlaceholders(player, placeholder);
+        
+        player.sendMessage(ColorUtils.colorize("&6=== PlaceholderAPI 测试 ==="));
+        player.sendMessage(ColorUtils.colorize("&e变量: &f" + placeholder));
+        player.sendMessage(ColorUtils.colorize("&e结果: &f" + result));
+        player.sendMessage(ColorUtils.colorize("&6========================"));
     }
 }
