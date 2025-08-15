@@ -1,8 +1,103 @@
-# 工会插件 (Guild)
+# Guild Plugin - Feature-Complete Minecraft Guild System(需要官方中文翻译请往下滑)
 
-一个功能完整的Minecraft工会系统插件，支持工会创建、成员管理、经济系统、关系管理等功能。
+Guild Plugin is a comprehensive Minecraft server plugin that provides a complete guild/clan system for your server. With this plugin, players can create and manage their own guilds, invite members, establish inter-guild relationships, and enjoy various guild features.
 
-## 📋 目录
+## Core Features
+
+### Guild Management
+- Create and customize guilds (name, tag, description)
+- Manage guild members (invite, kick, promote, demote)
+- Role-based permission system (Leader, Officer, Member)
+- Set and teleport to guild home
+- Guild application system
+
+### Economy System
+- Guild fund management (deposit, withdraw, transfer)
+- Guild creation fee configuration
+- Economy system integration (supports multiple economy plugins via Vault)
+
+### Relationship System
+- Inter-guild relationship management (allied, hostile, neutral, at war, truce)
+- Relationship status notifications
+- War status alerts
+
+### Leveling System
+- Guild level progression
+- Increased member capacity
+- Unlock additional guild features
+
+### User Interface
+- Complete Graphical User Interface (GUI)
+- Intuitive menu system
+- Customizable interface configuration
+
+## Technical Features
+
+- **Asynchronous Processing**: All database operations are asynchronous, ensuring no impact on server performance
+- **Multi-Database Support**: Supports both SQLite and MySQL
+- **Placeholder Support**: Integrated with PlaceholderAPI
+- **Permission Integration**: Fully compatible with Bukkit permission system
+- **High Performance**: Optimized code ensures smooth server operation
+
+## Commands
+
+- `/guild` - Main guild command
+- `/guildadmin` - Guild administration command
+
+## Permission Nodes
+
+- Uses built-in permission system
+
+## Basic Guild Information Variables
+
+### Guild Basic Info
+- `%guild_name%` - Guild name
+- `%guild_tag%` - Guild tag
+- `%guild_membercount%` - Current member count
+- `%guild_maxmembers%` - Maximum member capacity
+- `%guild_level%` - Guild level
+- `%guild_balance%` - Guild balance (2 decimal places)
+- `%guild_frozen%` - Guild status (Normal/Frozen/No Guild)
+
+### Player Guild Info
+- `%guild_role%` - Player's guild role (Leader/Officer/Member)
+- `%guild_joined%` - When player joined the guild
+- `%guild_contribution%` - Player's contribution to the guild
+
+## Guild Status Check Variables
+
+### Player Status
+- `%guild_hasguild%` - Whether player has a guild (Yes/No)
+- `%guild_isleader%` - Whether player is leader (Yes/No)
+- `%guild_isofficer%` - Whether player is officer (Yes/No)
+- `%guild_ismember%` - Whether player is member (Yes/No)
+
+## Guild Permission Check Variables
+
+### Permission Status
+- `%guild_caninvite%` - Can invite players (Yes/No)
+- `%guild_cankick%` - Can kick members (Yes/No)
+- `%guild_canpromote%` - Can promote members (Yes/No)
+- `%guild_candemote%` - Can demote members (Yes/No)
+- `%guild_cansethome%` - Can set guild home (Yes/No)
+- `%guild_canmanageeconomy%` - Can manage guild economy (Yes/No)
+
+## Requirements
+
+- Minecraft Server Version: 1.21+
+- Java Version: JDK 17+
+- Optional Dependencies: Vault (for economy support), PlaceholderAPI (for placeholder support)
+
+## Installation Steps
+
+1. Place the plugin jar file in your server's `plugins` folder
+2. Start the server - the plugin will automatically generate configuration files
+3. Edit configuration files as needed
+4. Restart server to apply changes
+
+
+
+## 📋 中文目录
 
 - [功能特性](#功能特性)
 - [安装指南](#安装指南)
@@ -203,35 +298,6 @@ mysql:
 | `/guildadmin kick <玩家> <工会>` | `guild.admin.kick` | 从工会踢出玩家 |
 | `/guildadmin relation` | `guild.admin.relation` | 关系管理 |
 | `/guildadmin test` | `guild.admin.test` | 测试功能 |
-
-## 🔐 权限节点
-
-### 基础权限
-- `guild.use` - 使用工会系统
-- `guild.create` - 创建工会
-- `guild.info` - 查看工会信息
-- `guild.members` - 查看工会成员
-- `guild.invite` - 邀请玩家
-- `guild.kick` - 踢出成员
-- `guild.leave` - 离开工会
-- `guild.delete` - 删除工会
-- `guild.promote` - 提升成员
-- `guild.demote` - 降级成员
-- `guild.accept` - 接受邀请
-- `guild.decline` - 拒绝邀请
-- `guild.sethome` - 设置工会家
-- `guild.home` - 传送到工会家
-- `guild.apply` - 申请加入工会
-
-### 管理员权限
-- `guild.admin` - 管理员权限
-- `guild.admin.reload` - 重载配置
-- `guild.admin.list` - 查看所有工会
-- `guild.admin.info` - 查看工会详情
-- `guild.admin.delete` - 强制删除工会
-- `guild.admin.kick` - 强制踢出玩家
-- `guild.admin.relation` - 管理工会关系
-- `guild.admin.test` - 测试功能
 
 ## 🖥️ GUI界面
 
