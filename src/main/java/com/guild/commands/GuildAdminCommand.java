@@ -5,10 +5,7 @@ import com.guild.core.utils.ColorUtils;
 import com.guild.gui.AdminGuildGUI;
 import com.guild.gui.RelationManagementGUI;
 import com.guild.models.Guild;
-import com.guild.models.GuildEconomy;
-import com.guild.models.GuildMember;
 import com.guild.models.GuildRelation;
-import com.guild.services.GuildService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -563,6 +560,8 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
     private void handleReload(CommandSender sender) {
         try {
             plugin.getConfigManager().reloadAllConfigs();
+            // 重新加载权限矩阵并清空权限缓存
+            plugin.getPermissionManager().reloadFromConfig();
             sender.sendMessage(ColorUtils.colorize("&a配置已重新加载！"));
         } catch (Exception e) {
             sender.sendMessage(ColorUtils.colorize("&c重新加载配置失败: " + e.getMessage()));

@@ -32,7 +32,8 @@ public class DatabaseManager {
      */
     public void initialize() {
         FileConfiguration config = plugin.getConfigManager().getDatabaseConfig();
-        String type = config.getString("database.type", "sqlite").toLowerCase();
+        // 兼容两种结构：root 与 database. 前缀
+        String type = config.getString("type", config.getString("database.type", "sqlite")).toLowerCase();
         
         try {
             if ("mysql".equals(type)) {
@@ -59,19 +60,21 @@ public class DatabaseManager {
         databaseType = DatabaseType.MYSQL;
         
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setJdbcUrl("jdbc:mysql://" + 
-            config.getString("database.mysql.host", "localhost") + ":" +
-            config.getInt("database.mysql.port", 3306) + "/" +
-            config.getString("database.mysql.database", "guild") +
-            "?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8");
+        String host = config.getString("mysql.host", config.getString("database.mysql.host", "localhost"));
+        int port = config.getInt("mysql.port", config.getInt("database.mysql.port", 3306));
+        String database = config.getString("mysql.database", config.getString("database.mysql.database", "guild"));
+        String params = "?useSSL=" + (config.getBoolean("mysql.use-ssl", config.getBoolean("database.mysql.use-ssl", false)) ? "true" : "false") +
+                "&serverTimezone=" + config.getString("mysql.timezone", config.getString("database.mysql.timezone", "UTC")) +
+                "&characterEncoding=" + config.getString("mysql.character-encoding", config.getString("database.mysql.character-encoding", "UTF-8"));
+        hikariConfig.setJdbcUrl("jdbc:mysql://" + host + ":" + port + "/" + database + params);
         
-        hikariConfig.setUsername(config.getString("database.mysql.username", "root"));
-        hikariConfig.setPassword(config.getString("database.mysql.password", ""));
-        hikariConfig.setMaximumPoolSize(config.getInt("database.mysql.pool-size", 20));
-        hikariConfig.setMinimumIdle(config.getInt("database.mysql.min-idle", 10));
-        hikariConfig.setConnectionTimeout(config.getLong("database.mysql.connection-timeout", 60000));
-        hikariConfig.setIdleTimeout(config.getLong("database.mysql.idle-timeout", 600000));
-        hikariConfig.setMaxLifetime(config.getLong("database.mysql.max-lifetime", 1800000));
+        hikariConfig.setUsername(config.getString("mysql.username", config.getString("database.mysql.username", "root")));
+        hikariConfig.setPassword(config.getString("mysql.password", config.getString("database.mysql.password", "")));
+        hikariConfig.setMaximumPoolSize(config.getInt("mysql.pool-size", config.getInt("database.mysql.pool-size", 20)));
+        hikariConfig.setMinimumIdle(config.getInt("mysql.min-idle", config.getInt("database.mysql.min-idle", 10)));
+        hikariConfig.setConnectionTimeout(config.getLong("mysql.connection-timeout", config.getLong("database.mysql.connection-timeout", 60000)));
+        hikariConfig.setIdleTimeout(config.getLong("mysql.idle-timeout", config.getLong("database.mysql.idle-timeout", 600000)));
+        hikariConfig.setMaxLifetime(config.getLong("mysql.max-lifetime", config.getLong("database.mysql.max-lifetime", 1800000)));
         
         dataSource = new HikariDataSource(hikariConfig);
     }
@@ -83,10 +86,36 @@ public class DatabaseManager {
         databaseType = DatabaseType.SQLITE;
         
         HikariConfig hikariConfig = new HikariConfig();
-        String dbPath = plugin.getDataFolder() + "/guild.db";
+        String fileName = config.getString("sqlite.file", config.getString("database.sqlite.file", "guild.db"));
+        String dbPath = plugin.getDataFolder() + "/" + fileName;
         hikariConfig.setJdbcUrl("jdbc:sqlite:" + dbPath);
-        hikariConfig.setMaximumPoolSize(1); // SQLite不支持多连接
-        hikariConfig.setConnectionTimeout(60000);
+        int maxPool = config.getInt("connection-pool.maximum-pool-size", 2);
+        if (maxPool < 1) { maxPool = 1; }
+        hikariConfig.setMaximumPoolSize(maxPool);
+        long connTimeout = config.getLong("connection-pool.connection-timeout", 10000);
+        hikariConfig.setConnectionTimeout(connTimeout);
+        long idleTimeout = config.getLong("connection-pool.idle-timeout", 600000);
+        hikariConfig.setIdleTimeout(idleTimeout);
+        long maxLifetime = config.getLong("connection-pool.max-lifetime", 1800000);
+        hikariConfig.setMaxLifetime(maxLifetime);
+
+        // SQLite优化：根据配置设置PRAGMA，减少锁等待与提升并发读
+        boolean walMode = config.getBoolean("sqlite.wal-mode", true);
+        String synchronous = config.getString("sqlite.synchronous", "NORMAL");
+        boolean foreignKeys = config.getBoolean("sqlite.foreign-keys", true);
+        int cacheSize = config.getInt("sqlite.cache-size", 2000);
+        int busyTimeoutMs = (int) config.getLong("sqlite.busy-timeout", 5000);
+        StringBuilder initSql = new StringBuilder();
+        if (walMode) {
+            initSql.append("PRAGMA journal_mode=WAL;");
+        }
+        if (synchronous != null) {
+            initSql.append("PRAGMA synchronous=").append(synchronous).append(";");
+        }
+        initSql.append("PRAGMA foreign_keys=").append(foreignKeys ? "ON" : "OFF").append(";");
+        initSql.append("PRAGMA cache_size=").append(cacheSize).append(";");
+        initSql.append("PRAGMA busy_timeout=").append(busyTimeoutMs).append(";");
+        hikariConfig.setConnectionInitSql(initSql.toString());
         
         dataSource = new HikariDataSource(hikariConfig);
     }

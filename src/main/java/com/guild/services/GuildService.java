@@ -81,8 +81,8 @@ public class GuildService {
                     return -1;
                 }).thenCompose(guildId -> {
                     if ((Integer) guildId > 0) {
-                        // 添加会长为工会成员
-                        return addGuildMemberAsync((Integer) guildId, leaderUuid, leaderName, GuildMember.Role.LEADER)
+                        // 添加会长为工会成员（避免重复查询）
+                        return addGuildMemberDirectAsync((Integer) guildId, leaderUuid, leaderName, GuildMember.Role.LEADER)
                             .thenCompose(success -> {
                                 if (success) {
                                     // 记录工会创建日志
@@ -293,6 +293,8 @@ public class GuildService {
                     int affectedRows = stmt.executeUpdate();
                     if (affectedRows > 0) {
                         logger.info("玩家 " + playerName + " 加入工会 (ID: " + guildId + ")");
+                        // 更新内置权限缓存
+                        try { plugin.getPermissionManager().updatePlayerPermissions(playerUuid); } catch (Exception ignored) {}
                         
                         // 记录成员加入日志
                         getGuildByIdAsync(guildId).thenAccept(guild -> {
@@ -364,6 +366,8 @@ public class GuildService {
                             int affectedRows = stmt.executeUpdate();
                             if (affectedRows > 0) {
                                 logger.info("玩家 " + member.getPlayerName() + " 离开工会 (ID: " + member.getGuildId() + ")");
+                                // 更新内置权限缓存
+                                try { plugin.getPermissionManager().updatePlayerPermissions(playerUuid); } catch (Exception ignored) {}
                                 
                                 // 记录成员离开日志
                                 getGuildByIdAsync(member.getGuildId()).thenAccept(guild -> {
@@ -433,6 +437,8 @@ public class GuildService {
                             int affectedRows = stmt.executeUpdate();
                             if (affectedRows > 0) {
                                 logger.info("玩家 " + member.getPlayerName() + " 角色更新为: " + newRole.name());
+                                // 更新内置权限缓存
+                                try { plugin.getPermissionManager().updatePlayerPermissions(playerUuid); } catch (Exception ignored) {}
                                 
                                 // 记录角色变更日志
                                 getGuildByIdAsync(member.getGuildId()).thenAccept(guild -> {
@@ -2114,6 +2120,34 @@ public class GuildService {
                 }
                 return false;
             });
+        });
+    }
+
+    /**
+     * 直接插入工会成员（不做已有工会检查）。
+     * 仅用于建会后插入会长，以避免额外读库造成的连接争用。
+     */
+    private CompletableFuture<Boolean> addGuildMemberDirectAsync(int guildId, UUID playerUuid, String playerName, GuildMember.Role role) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                String sql = "INSERT INTO guild_members (guild_id, player_uuid, player_name, role, joined_at) VALUES (?, ?, ?, ?, " +
+                        (plugin.getDatabaseManager().getDatabaseType() == DatabaseManager.DatabaseType.SQLITE ? "datetime('now')" : "NOW()") + ")";
+                try (Connection conn = databaseManager.getConnection();
+                     PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, guildId);
+                    stmt.setString(2, playerUuid.toString());
+                    stmt.setString(3, playerName);
+                    stmt.setString(4, role.name());
+                    int affectedRows = stmt.executeUpdate();
+                    if (affectedRows > 0) {
+                        try { plugin.getPermissionManager().updatePlayerPermissions(playerUuid); } catch (Exception ignored) {}
+                        return true;
+                    }
+                }
+            } catch (SQLException e) {
+                logger.severe("直接添加工会成员时发生错误: " + e.getMessage());
+            }
+            return false;
         });
     }
 

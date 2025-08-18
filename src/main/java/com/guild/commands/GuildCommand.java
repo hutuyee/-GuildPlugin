@@ -17,7 +17,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -467,9 +466,8 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // 检查邀请者权限
-        GuildMember member = guildService.getGuildMember(player.getUniqueId());
-        if (!guildService.hasGuildPermission(player.getUniqueId())) {
+        // 检查邀请权限（配置驱动）
+        if (!plugin.getPermissionManager().canInviteMembers(player)) {
             String message = plugin.getConfigManager().getMessagesConfig().getString("invite.no-permission", "&c您没有权限邀请玩家！");
             player.sendMessage(ColorUtils.colorize(message));
             return;
@@ -554,8 +552,8 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // 检查踢出者权限
-        if (!guildService.hasGuildPermission(player.getUniqueId())) {
+        // 检查踢人权限（配置驱动）
+        if (!plugin.getPermissionManager().canKickMembers(player)) {
             String message = plugin.getConfigManager().getMessagesConfig().getString("kick.no-permission", "&c您没有权限踢出玩家！");
             player.sendMessage(ColorUtils.colorize(message));
             return;
@@ -676,12 +674,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // 检查是否是会长
-        if (!guildService.isGuildLeader(player.getUniqueId())) {
-            String message = plugin.getConfigManager().getMessagesConfig().getString("delete.only-leader", "&c只有工会会长才能删除工会！");
-            player.sendMessage(ColorUtils.colorize(message));
-            return;
-        }
+        // 删除权限已在前置节点校验并由内置权限系统控制
         
         // 确认删除
         String warningMessage = plugin.getConfigManager().getMessagesConfig().getString("delete.warning", "&c警告：删除工会将永久解散工会，所有成员将被移除！");
@@ -814,12 +807,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // 检查提升者权限 - 只有会长可以提升
-        if (!guildService.isGuildLeader(player.getUniqueId())) {
-            String message = plugin.getConfigManager().getMessagesConfig().getString("permissions.promote.no-permission", "&c您没有权限提升玩家！");
-            player.sendMessage(ColorUtils.colorize(message));
-            return;
-        }
+        // 已通过节点校验，按配置驱动，不再强制“仅会长”
         
         // 查找目标玩家
         Player targetPlayer = Bukkit.getPlayer(targetPlayerName);
@@ -907,12 +895,7 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
             return;
         }
         
-        // 检查降级者权限 - 只有会长可以降级
-        if (!guildService.isGuildLeader(player.getUniqueId())) {
-            String message = plugin.getConfigManager().getMessagesConfig().getString("permissions.demote.no-permission", "&c您没有权限降级玩家！");
-            player.sendMessage(ColorUtils.colorize(message));
-            return;
-        }
+        // 已通过节点校验，按配置驱动，不再强制“仅会长”
         
         // 查找目标玩家
         Player targetPlayer = Bukkit.getPlayer(targetPlayerName);

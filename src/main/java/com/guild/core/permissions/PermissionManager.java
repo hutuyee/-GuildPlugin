@@ -4,6 +4,7 @@ import com.guild.GuildPlugin;
 import com.guild.models.Guild;
 import com.guild.models.GuildMember;
 import com.guild.services.GuildService;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import java.util.HashMap;
@@ -19,10 +20,16 @@ public class PermissionManager {
     private final GuildPlugin plugin;
     private final Logger logger;
     private final Map<UUID, PlayerPermissions> playerPermissions = new HashMap<>();
+    // 配置驱动的角色权限矩阵
+    private RolePermissions defaultPermissions;
+    private RolePermissions memberPermissions;
+    private RolePermissions officerPermissions;
+    private RolePermissions leaderPermissions;
     
     public PermissionManager(GuildPlugin plugin) {
         this.plugin = plugin;
         this.logger = plugin.getLogger();
+        reloadFromConfig();
     }
     
     /**
@@ -65,6 +72,12 @@ public class PermissionManager {
             case "guild.kick":
                 return permissions.canKickMembers();
                 
+            case "guild.promote":
+                return permissions.canPromoteMembers();
+                
+            case "guild.demote":
+                return permissions.canDemoteMembers();
+                
             case "guild.delete":
                 return permissions.canDeleteGuild();
                 
@@ -81,41 +94,43 @@ public class PermissionManager {
      */
     private PlayerPermissions getPlayerPermissions(UUID playerUuid) {
         return playerPermissions.computeIfAbsent(playerUuid, uuid -> {
-            PlayerPermissions permissions = new PlayerPermissions();
-            
-            // 检查玩家是否在工会中
+            PlayerPermissions resolved = new PlayerPermissions();
             GuildService guildService = plugin.getServiceContainer().get(GuildService.class);
+            GuildMember.Role role = null;
             if (guildService != null) {
                 Guild guild = guildService.getPlayerGuild(uuid);
                 if (guild != null) {
                     GuildMember member = guildService.getGuildMember(uuid);
                     if (member != null) {
-                        // 根据角色设置权限
-                        switch (member.getRole()) {
-                            case LEADER:
-                                permissions.setCanCreateGuild(true);
-                                permissions.setCanInviteMembers(true);
-                                permissions.setCanKickMembers(true);
-                                permissions.setCanDeleteGuild(true);
-                                permissions.setCanPromoteMembers(true);
-                                permissions.setCanDemoteMembers(true);
-                                break;
-                            case OFFICER:
-                                permissions.setCanInviteMembers(true);
-                                permissions.setCanKickMembers(true);
-                                permissions.setCanPromoteMembers(false);
-                                permissions.setCanDemoteMembers(false);
-                                break;
-                            case MEMBER:
-                                // 普通成员只有基本权限
-                                break;
-                        }
+                        role = member.getRole();
                     }
                 }
             }
-            
-            return permissions;
+            RolePermissions rp = resolveRolePermissions(role);
+            resolved.setCanCreateGuild(rp.canCreate);
+            resolved.setCanInviteMembers(rp.canInvite);
+            resolved.setCanKickMembers(rp.canKick);
+            resolved.setCanDeleteGuild(rp.canDelete);
+            resolved.setCanPromoteMembers(rp.canPromote);
+            resolved.setCanDemoteMembers(rp.canDemote);
+            // isAdmin 仍由 Bukkit 权限系统控制
+            return resolved;
         });
+    }
+
+    private RolePermissions resolveRolePermissions(GuildMember.Role role) {
+        if (role == null) {
+            return defaultPermissions;
+        }
+        switch (role) {
+            case LEADER:
+                return leaderPermissions;
+            case OFFICER:
+                return officerPermissions;
+            case MEMBER:
+            default:
+                return memberPermissions;
+        }
     }
     
     /**
@@ -125,6 +140,35 @@ public class PermissionManager {
         playerPermissions.remove(playerUuid);
         // 重新计算权限
         getPlayerPermissions(playerUuid);
+    }
+
+    /**
+     * 从配置重载权限矩阵，并清空缓存
+     */
+    public void reloadFromConfig() {
+        FileConfiguration cfg = plugin.getConfigManager().getMainConfig();
+        this.defaultPermissions = readRolePermissions(cfg, "permissions.default",
+                new RolePermissions(false, false, false, false, false, false));
+        this.memberPermissions = readRolePermissions(cfg, "permissions.member",
+                new RolePermissions(true, false, false, false, false, false));
+        this.officerPermissions = readRolePermissions(cfg, "permissions.officer",
+                new RolePermissions(true, true, true, false, false, false));
+        // leader 未配置时，采用全开作为回退
+        RolePermissions leaderFallback = new RolePermissions(true, true, true, true, true, true);
+        this.leaderPermissions = readRolePermissions(cfg, "permissions.leader", leaderFallback);
+        playerPermissions.clear();
+        logger.info("权限矩阵已从配置重载，并清空玩家权限缓存");
+    }
+
+    private RolePermissions readRolePermissions(FileConfiguration cfg, String path, RolePermissions fallback) {
+        if (cfg == null) return fallback;
+        boolean canCreate = cfg.getBoolean(path + ".can-create", fallback.canCreate);
+        boolean canInvite = cfg.getBoolean(path + ".can-invite", fallback.canInvite);
+        boolean canKick = cfg.getBoolean(path + ".can-kick", fallback.canKick);
+        boolean canPromote = cfg.getBoolean(path + ".can-promote", fallback.canPromote);
+        boolean canDemote = cfg.getBoolean(path + ".can-demote", fallback.canDemote);
+        boolean canDelete = cfg.getBoolean(path + ".can-delete", fallback.canDelete);
+        return new RolePermissions(canCreate, canInvite, canKick, canPromote, canDemote, canDelete);
     }
     
     /**
@@ -146,8 +190,7 @@ public class PermissionManager {
             return false;
         }
         
-        GuildMember member = guildService.getGuildMember(player.getUniqueId());
-        return member != null && member.getRole().canInvite();
+        return getPlayerPermissions(player.getUniqueId()).canInviteMembers();
     }
     
     /**
@@ -169,8 +212,7 @@ public class PermissionManager {
             return false;
         }
         
-        GuildMember member = guildService.getGuildMember(player.getUniqueId());
-        return member != null && member.getRole().canKick();
+        return getPlayerPermissions(player.getUniqueId()).canKickMembers();
     }
     
     /**
@@ -192,8 +234,7 @@ public class PermissionManager {
             return false;
         }
         
-        GuildMember member = guildService.getGuildMember(player.getUniqueId());
-        return member != null && member.getRole().canDeleteGuild();
+        return getPlayerPermissions(player.getUniqueId()).canDeleteGuild();
     }
     
     /**
@@ -246,5 +287,23 @@ public class PermissionManager {
         
         public boolean isAdmin() { return isAdmin; }
         public void setAdmin(boolean admin) { isAdmin = admin; }
+    }
+
+    // 角色权限矩阵（配置驱动）
+    private static class RolePermissions {
+        final boolean canCreate;
+        final boolean canInvite;
+        final boolean canKick;
+        final boolean canPromote;
+        final boolean canDemote;
+        final boolean canDelete;
+        RolePermissions(boolean canCreate, boolean canInvite, boolean canKick, boolean canPromote, boolean canDemote, boolean canDelete) {
+            this.canCreate = canCreate;
+            this.canInvite = canInvite;
+            this.canKick = canKick;
+            this.canPromote = canPromote;
+            this.canDemote = canDemote;
+            this.canDelete = canDelete;
+        }
     }
 }

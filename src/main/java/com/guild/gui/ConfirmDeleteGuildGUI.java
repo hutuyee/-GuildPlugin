@@ -4,6 +4,8 @@ import com.guild.GuildPlugin;
 import com.guild.core.gui.GUI;
 import com.guild.core.utils.ColorUtils;
 import com.guild.models.Guild;
+import com.guild.models.GuildMember;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -117,8 +119,9 @@ public class ConfirmDeleteGuildGUI implements GUI {
      * 处理确认删除
      */
     private void handleConfirmDelete(Player player) {
-        // 检查权限
-        if (!player.hasPermission("guild.admin")) {
+        // 检查权限（只有当前工会会长可以删除）
+        GuildMember member = plugin.getGuildService().getGuildMember(player.getUniqueId());
+        if (member == null || member.getGuildId() != guild.getId() || member.getRole() != GuildMember.Role.LEADER) {
             String message = plugin.getConfigManager().getMessagesConfig().getString("gui.leader-only", "&c只有工会会长才能执行此操作");
             player.sendMessage(ColorUtils.colorize(message));
             return;
@@ -129,11 +132,13 @@ public class ConfirmDeleteGuildGUI implements GUI {
             if (success) {
                 String message = plugin.getConfigManager().getMessagesConfig().getString("delete.success", "&a工会 &e{guild} &a已被删除！")
                     .replace("{guild}", guild.getName());
-                player.sendMessage(ColorUtils.colorize(message));
-                
-                // 关闭GUI并返回主菜单
-                player.closeInventory();
-                plugin.getGuiManager().openGUI(player, new MainGuildGUI(plugin));
+                // 回到主线程进行界面操作
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    player.sendMessage(ColorUtils.colorize(message));
+                    // 使用GUIManager以确保主线程安全关闭与打开
+                    plugin.getGuiManager().closeGUI(player);
+                    plugin.getGuiManager().openGUI(player, new MainGuildGUI(plugin));
+                });
             } else {
                 String message = plugin.getConfigManager().getMessagesConfig().getString("delete.failed", "&c删除工会失败！");
                 player.sendMessage(ColorUtils.colorize(message));
