@@ -132,7 +132,8 @@ public class GuildLog {
         APPLICATION_REJECTED("申请拒绝"),
         INVITATION_SENT("邀请发送"),
         INVITATION_ACCEPTED("邀请接受"),
-        INVITATION_REJECTED("邀请拒绝");
+        INVITATION_REJECTED("邀请拒绝"),
+        LEADER_CHANGED("工会转让");
 
         private final String displayName;
 

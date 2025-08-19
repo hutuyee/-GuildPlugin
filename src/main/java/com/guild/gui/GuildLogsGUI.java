@@ -170,6 +170,8 @@ public class GuildLogsGUI implements GUI {
      */
     private Material getLogMaterial(GuildLog.LogType logType) {
         switch (logType) {
+            case LEADER_CHANGED:
+                return Material.DARK_OAK_BUTTON;
             case GUILD_CREATED:
                 return Material.GREEN_WOOL;
             case GUILD_DISSOLVED:

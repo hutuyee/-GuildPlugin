@@ -303,8 +303,15 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                 }
                 
                 // 转让会长
-                // TODO: 实现转让功能
-                sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 的会长已转让给 " + newLeaderName + "！"));
+                UUID leaderUuid = Bukkit.getPlayer(sender.getName()).getUniqueId();
+                plugin.getGuildService().AdminTransfer(guild.getId(), leaderUuid, newLeader.getUniqueId(),newLeaderName).thenCompose(aBoolean -> {
+                    if (aBoolean){
+                        sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 的会长已转让给 " + newLeaderName + "！"));
+                    } else {
+                        sender.sendMessage("TEST");
+                    }
+                    return null;
+                });
             });
         });
     }
