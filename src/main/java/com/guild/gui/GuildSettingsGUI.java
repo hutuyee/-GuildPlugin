@@ -14,8 +14,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
-
 /**
  * 工会设置GUI
  */
@@ -77,9 +75,6 @@ public class GuildSettingsGUI implements GUI {
                 break;
             case 24: // 提升成员
                 handlePromoteMember(player);
-                break;
-            case 25: // 转让
-                handleChangeLeader(player);
                 break;
             case 26: // 降级成员
                 handleDemoteMember(player);
@@ -188,14 +183,6 @@ public class GuildSettingsGUI implements GUI {
         );
         inventory.setItem(24, promoteMember);
 
-        // 转为会长按钮
-        ItemStack ChangeLeader = createItem(
-                Material.GOLD_INGOT,
-                ColorUtils.colorize(plugin.getConfigManager().getMessagesConfig().getString("gui.change-leader", "&6转为会长")),
-                ColorUtils.colorize("&7转为会长")
-        );
-        inventory.setItem(25, ChangeLeader);
-        
         // 降级成员按钮
         ItemStack demoteMember = createItem(
             Material.IRON_INGOT,
@@ -443,21 +430,6 @@ public class GuildSettingsGUI implements GUI {
         plugin.getGuiManager().openGUI(player, new DemoteMemberGUI(plugin, guild));
     }
 
-    /**
-     * 转让会长
-     */
-    private void handleChangeLeader(Player player) {
-        // 检查权限（只有会长可以转）
-        GuildMember member = plugin.getGuildService().getGuildMember(player.getUniqueId());
-        if (member == null || member.getRole() != GuildMember.Role.LEADER) {
-            String message = plugin.getConfigManager().getMessagesConfig().getString("gui.leader-only", "&c只有工会会长才能执行此操作");
-            player.sendMessage(ColorUtils.colorize(message));
-            return;
-        }
-
-        // 打开降级成员GUI
-        plugin.getGuiManager().openGUI(player, new ChangeLeaderGUI(plugin, guild));
-    }
 
     /**
      * 处理申请管理

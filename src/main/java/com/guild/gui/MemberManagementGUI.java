@@ -12,12 +12,10 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * 成员管理GUI
@@ -126,7 +124,14 @@ public class MemberManagementGUI implements GUI {
             ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("member-management.items.demote-member.lore.1", "&7降级成员职位"))
         );
         inventory.setItem(51, demoteMember);
-        
+        // 转为会长按钮
+        ItemStack ChangeLeader = createItem(
+                Material.GOLD_INGOT,
+                ColorUtils.colorize(plugin.getConfigManager().getMessagesConfig().getString("gui.change-leader", "&6转为会长")),
+                ColorUtils.colorize("&7转为会长")
+        );
+        inventory.setItem(52, ChangeLeader);
+
         // 返回按钮
         ItemStack back = createItem(
             Material.ARROW,
@@ -135,7 +140,22 @@ public class MemberManagementGUI implements GUI {
         );
         inventory.setItem(53, back);
     }
-    
+
+    /**
+     * 转让会长
+     */
+    private void handleChangeLeader(Player player) {
+        // 检查权限（只有会长可以转）
+        GuildMember member = plugin.getGuildService().getGuildMember(player.getUniqueId());
+        if (member == null || member.getRole() != GuildMember.Role.LEADER) {
+            String message = plugin.getConfigManager().getMessagesConfig().getString("gui.leader-only", "&c只有工会会长才能执行此操作");
+            player.sendMessage(ColorUtils.colorize(message));
+            return;
+        }
+
+        // 打开降级成员GUI
+        plugin.getGuiManager().openGUI(player, new ChangeLeaderGUI(plugin, guild));
+    }
     /**
      * 加载成员列表
      */
@@ -263,7 +283,7 @@ public class MemberManagementGUI implements GUI {
      * 检查是否是功能按钮
      */
     private boolean isFunctionButton(int slot) {
-        return slot == 45 || slot == 47 || slot == 49 || slot == 51 || slot == 53;
+        return slot == 45 || slot == 47 || slot == 49 || slot == 51 || slot == 52|| slot == 53;
     }
     
     /**
@@ -297,6 +317,9 @@ public class MemberManagementGUI implements GUI {
             case 51: // 降级成员
                 handleDemoteMember(player);
                 break;
+            case 52: // 转让
+                handleChangeLeader(player);
+                break;
             case 53: // 返回
                 plugin.getGuiManager().openGUI(player, new MainGuildGUI(plugin));
                 break;
@@ -317,7 +340,7 @@ public class MemberManagementGUI implements GUI {
             refreshInventory(player);
         }
     }
-    
+
     /**
      * 处理成员点击
      */

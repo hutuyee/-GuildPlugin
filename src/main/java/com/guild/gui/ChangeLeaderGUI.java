@@ -38,14 +38,15 @@ public class ChangeLeaderGUI implements GUI {
         plugin.getGuildService().getGuildMembersAsync(guild.getId()).thenAccept(memberList -> {
             this.members = memberList.stream()
                     .filter(member -> !member.getPlayerUuid().equals(guild.getLeaderUuid()))
-                    .filter(member -> member.getRole().equals(GuildMember.Role.OFFICER)) // 只显示官员
+                    .filter(member -> member.getRole().equals(GuildMember.Role.OFFICER))
+                    .filter(member -> member.getRole().equals(GuildMember.Role.MEMBER))
                     .collect(java.util.stream.Collectors.toList());
         });
     }
 
     @Override
     public String getTitle() {
-        return ColorUtils.colorize("&6降级成员 - 第" + (currentPage + 1) + "页");
+        return ColorUtils.colorize("&6转为会长 成员 - 第" + (currentPage + 1) + "页");
     }
 
     @Override
