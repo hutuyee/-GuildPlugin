@@ -114,57 +114,120 @@ public class GuildService {
     /**
      * 转让工会
      */
-    public CompletableFuture<Boolean> AdminTransfer(int guildID, UUID leaderUUID, UUID newLeaderUuid, String newLeaderName){
+    public boolean GuildLeaderChange(int guildId, String newLeaderUuid, String newLeaderName) {
+        try (Connection conn = databaseManager.getConnection()) {
+            conn.setAutoCommit(false); // 开启事务，保证一致性
+
+
+            // 1. 旧会长降级为 MEMBER
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE guild_members SET role = 'MEMBER' WHERE guild_id = ? AND role = 'LEADER'")) {
+                ps.setInt(1, guildId);
+                ps.executeUpdate();
+            }
+
+            // 2. 新会长是否已在成员表中？
+            boolean exists;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT COUNT(*) FROM guild_members WHERE guild_id = ? AND player_uuid = ?")) {
+                ps.setInt(1, guildId);
+                ps.setString(2, newLeaderUuid);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    exists = rs.getInt(1) > 0;
+                }
+            }
+
+            if (exists) {
+                // 2a. 已在成员表 → 直接升为 LEADER
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE guild_members SET role = 'LEADER', player_name = ? " +
+                                "WHERE guild_id = ? AND player_uuid = ?")) {
+                    ps.setString(1, newLeaderName);
+                    ps.setInt(2, guildId);
+                    ps.setString(3, newLeaderUuid);
+                    ps.executeUpdate();
+                }
+            } else {
+                // 2b. 不在成员表 → 插入为 LEADER
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "INSERT INTO guild_members (guild_id, player_uuid, player_name, role) " +
+                                "VALUES (?, ?, ?, 'LEADER')")) {
+                    ps.setInt(1, guildId);
+                    ps.setString(2, newLeaderUuid);
+                    ps.setString(3, newLeaderName);
+                    ps.executeUpdate();
+                }
+            }
+
+            // 3. 更新 guilds 表
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE guilds SET leader_uuid = ?, leader_name = ?, updated_at = datetime('now') " +
+                            "WHERE id = ?")) {
+                ps.setString(1, newLeaderUuid);
+                ps.setString(2, newLeaderName);
+                ps.setInt(3, guildId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+    /**
+     * 转让工会 admin
+     */
+    public CompletableFuture<Boolean> AdminTransfer(int guildID, UUID newLeaderUuid, String newLeaderName){
         return getGuildByIdAsync(guildID).thenCompose(guild -> {
             if (guild == null){
                 return CompletableFuture.completedFuture(false);
             }
-            return getGuildMemberAsync(leaderUUID).thenCompose(guildMember -> {
-                // 判断是会长的操作
-                if (guildMember == null || guildMember.getGuildId() != guildID || guildMember.getRole() != GuildMember.Role.LEADER) {
+
+            getGuildMemberAsync(newLeaderUuid).thenCompose(guildMember1 -> {
+                // 判断新会长不是会长且存在在工会中
+                if (guildMember1 == null || guildMember1.getGuildId() != guildID || guildMember1.getRole() == GuildMember.Role.LEADER) {
                     return CompletableFuture.completedFuture(false);
                 }
-                return getGuildMemberAsync(newLeaderUuid).thenCompose(guildMember1 -> {
-                    // 判断新会长不是会长且存在在工会中
-                    if (guildMember1 == null || guildMember1.getGuildId() != guildID || guildMember1.getRole() == GuildMember.Role.LEADER) {
-                        return CompletableFuture.completedFuture(false);
+                return CompletableFuture.supplyAsync(() -> {
+                    String sql = "UPDATE guilds SET leader_uuid = ?, leader_name = ?, updated_at = " +
+                            (plugin.getDatabaseManager().getDatabaseType() == DatabaseManager.DatabaseType.SQLITE ?
+                                    "datetime('now')" : "NOW()") +
+                            " WHERE id = ?";
+
+                    try (Connection conn = databaseManager.getConnection();
+                         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                        stmt.setString(1, newLeaderUuid.toString());
+                        stmt.setString(2, newLeaderName);
+                        stmt.setInt(3, guildID);
+
+                        int affectedRows = stmt.executeUpdate();
+                        if (affectedRows > 0) {
+                            logger.info("工会(ID: " + guildID + ") 的会长已更换为: " + newLeaderName + " (" + newLeaderUuid + ")");
+                            return true;
+                        }
+                    } catch (SQLException e) {
+                        logger.severe("更换工会会长时发生错误: " + e.getMessage());
                     }
-                    return CompletableFuture.supplyAsync(() -> {
-                        String sql = "UPDATE guilds SET leader_uuid = ?, leader_name = ?, updated_at = " +
-                                (plugin.getDatabaseManager().getDatabaseType() == DatabaseManager.DatabaseType.SQLITE ?
-                                        "datetime('now')" : "NOW()") +
-                                " WHERE id = ?";
-
-                        try (Connection conn = databaseManager.getConnection();
-                             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-                            stmt.setString(1, newLeaderUuid.toString());
-                            stmt.setString(2, newLeaderName);
-                            stmt.setInt(3, guildID);
-
-                            int affectedRows = stmt.executeUpdate();
-                            if (affectedRows > 0) {
-                                logger.info("工会(ID: " + guildID + ") 的会长已更换为: " + newLeaderName + " (" + newLeaderUuid + ")");
-                                return true;
-                            }
-                        } catch (SQLException e) {
-                            logger.severe("更换工会会长时发生错误: " + e.getMessage());
-                        }
-                        return false;
-                    }).thenCompose(success -> {
-                        if (success) {
-                            // 记录日志
-                            return logGuildActionAsync(guildID, null, newLeaderUuid.toString(), newLeaderName,
-                                    GuildLog.LogType.LEADER_CHANGED, "更换会长", "新会长: " + newLeaderName)
-                                    .thenApply(logSuccess -> success);
-                        }
-                        return CompletableFuture.completedFuture(false);
-                    });
+                    return false;
+                }).thenCompose(success -> {
+                    if (success) {
+                        // 记录日志
+                        return logGuildActionAsync(guildID, null, newLeaderUuid.toString(), newLeaderName,
+                                GuildLog.LogType.LEADER_CHANGED, "更换会长", "新会长: " + newLeaderName)
+                                .thenApply(logSuccess -> success);
+                    }
+                    return CompletableFuture.completedFuture(false);
                 });
             });
+            return null;
         });
     }
-
     /**
      * 删除工会 (异步)
      */

@@ -5,6 +5,7 @@ import com.guild.core.utils.ColorUtils;
 import com.guild.gui.AdminGuildGUI;
 import com.guild.gui.RelationManagementGUI;
 import com.guild.models.Guild;
+import com.guild.models.GuildMember;
 import com.guild.models.GuildRelation;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -23,20 +24,20 @@ import java.util.concurrent.CompletableFuture;
  * 工会管理员命令
  */
 public class GuildAdminCommand implements CommandExecutor, TabCompleter {
-    
+
     private final GuildPlugin plugin;
-    
+
     public GuildAdminCommand(GuildPlugin plugin) {
         this.plugin = plugin;
     }
-    
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("guild.admin")) {
             sender.sendMessage(ColorUtils.colorize(plugin.getConfigManager().getMessagesConfig().getString("general.no-permission", "&c您没有权限执行此操作！")));
             return true;
         }
-        
+
         if (args.length == 0) {
             if (sender instanceof Player player) {
                 // 打开管理员GUI
@@ -47,7 +48,7 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             }
             return true;
         }
-        
+
         switch (args[0].toLowerCase()) {
             case "list":
                 handleList(sender, args);
@@ -64,8 +65,8 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             case "unfreeze":
                 handleUnfreeze(sender, args);
                 break;
-            case "transfer":
-                handleTransfer(sender, args);
+            case "GuildLeaderChange":
+                handleGuildLeaderChange(sender, args);
                 break;
             case "economy":
                 handleEconomy(sender, args);
@@ -86,27 +87,27 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ColorUtils.colorize(plugin.getConfigManager().getMessagesConfig().getString("general.unknown-command", "&c未知命令！使用 /guildadmin help 查看帮助。")));
                 break;
         }
-        
+
         return true;
     }
-    
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
-        
+
         if (!sender.hasPermission("guild.admin")) {
             return completions;
         }
-        
+
         if (args.length == 1) {
-            completions.addAll(Arrays.asList("list", "info", "delete", "freeze", "unfreeze", "transfer", "economy", "relation", "reload", "help"));
+            completions.addAll(Arrays.asList("list", "info", "delete", "freeze", "unfreeze", "GuildLeaderChange", "economy", "relation", "reload", "help"));
         } else if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "info":
                 case "delete":
                 case "freeze":
                 case "unfreeze":
-                case "transfer":
+                case "GuildLeaderChange":
                 case "economy":
                     // 获取所有工会名称
                     plugin.getGuildService().getAllGuildsAsync().thenAccept(guilds -> {
@@ -121,7 +122,7 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             }
         } else if (args.length == 3) {
             switch (args[0].toLowerCase()) {
-                case "transfer":
+                case "GuildLeaderChange":
                     // 获取在线玩家
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         completions.add(player.getName());
@@ -164,10 +165,10 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                     break;
             }
         }
-        
+
         return completions;
     }
-    
+
     private void handleList(CommandSender sender, String[] args) {
         plugin.getGuildService().getAllGuildsAsync().thenAccept(guilds -> {
             sender.sendMessage(ColorUtils.colorize("&6=== 工会列表 ==="));
@@ -175,28 +176,28 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ColorUtils.colorize("&c暂无工会"));
                 return;
             }
-            
+
             for (Guild guild : guilds) {
                 String status = guild.isFrozen() ? "&c[冻结]" : "&a[正常]";
-                sender.sendMessage(ColorUtils.colorize(String.format("&e%s &7- 会长: &f%s &7- 等级: &f%d &7%s", 
+                sender.sendMessage(ColorUtils.colorize(String.format("&e%s &7- 会长: &f%s &7- 等级: &f%d &7%s",
                     guild.getName(), guild.getLeaderName(), guild.getLevel(), status)));
             }
         });
     }
-    
+
     private void handleInfo(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin info <工会名称>"));
             return;
         }
-        
+
         String guildName = args[1];
         plugin.getGuildService().getGuildByNameAsync(guildName).thenAccept(guild -> {
             if (guild == null) {
                 sender.sendMessage(ColorUtils.colorize("&c工会 " + guildName + " 不存在！"));
                 return;
             }
-            
+
             sender.sendMessage(ColorUtils.colorize("&6=== 工会信息 ==="));
             sender.sendMessage(ColorUtils.colorize("&e名称: &f" + guild.getName()));
             sender.sendMessage(ColorUtils.colorize("&e标签: &f" + (guild.getTag() != null ? guild.getTag() : "无")));
@@ -204,27 +205,27 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ColorUtils.colorize("&e等级: &f" + guild.getLevel()));
             sender.sendMessage(ColorUtils.colorize("&e资金: &f" + guild.getBalance()));
             sender.sendMessage(ColorUtils.colorize("&e状态: &f" + (guild.isFrozen() ? "冻结" : "正常")));
-            
+
             // 获取成员数量
             plugin.getGuildService().getGuildMemberCountAsync(guild.getId()).thenAccept(count -> {
                 sender.sendMessage(ColorUtils.colorize("&e成员数量: &f" + count + "/" + guild.getMaxMembers()));
             });
         });
     }
-    
+
     private void handleDelete(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin delete <工会名称>"));
             return;
         }
-        
+
         String guildName = args[1];
         plugin.getGuildService().getGuildByNameAsync(guildName).thenAccept(guild -> {
             if (guild == null) {
                 sender.sendMessage(ColorUtils.colorize("&c工会 " + guildName + " 不存在！"));
                 return;
             }
-            
+
             // 强制删除工会
             plugin.getGuildService().deleteGuildAsync(guild.getId(), UUID.randomUUID()).thenAccept(success -> {
                 if (success) {
@@ -235,110 +236,94 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             });
         });
     }
-    
+
     private void handleFreeze(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin freeze <工会名称>"));
             return;
         }
-        
+
         String guildName = args[1];
         plugin.getGuildService().getGuildByNameAsync(guildName).thenAccept(guild -> {
             if (guild == null) {
                 sender.sendMessage(ColorUtils.colorize("&c工会 " + guildName + " 不存在！"));
                 return;
             }
-            
+
             // 冻结工会
             // TODO: 实现冻结功能
-            sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 已被冻结！"));
+            //sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 已被冻结！"));
+            sender.sendMessage("停机");
         });
     }
-    
+
     private void handleUnfreeze(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin unfreeze <工会名称>"));
             return;
         }
-        
+
         String guildName = args[1];
         plugin.getGuildService().getGuildByNameAsync(guildName).thenAccept(guild -> {
             if (guild == null) {
                 sender.sendMessage(ColorUtils.colorize("&c工会 " + guildName + " 不存在！"));
                 return;
             }
-            
+
             // 解冻工会
             // TODO: 实现解冻功能
-            sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 已被解冻！"));
+            //sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 已被解冻！"));
+            sender.sendMessage("停机");
         });
     }
-    
-    private void handleTransfer(CommandSender sender, String[] args) {
+
+    private void handleGuildLeaderChange(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin transfer <工会名称> <新会长>"));
+            sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin guildleaderchange <工会名> <新会长>"));
             return;
         }
-        
         String guildName = args[1];
         String newLeaderName = args[2];
-        
         Player newLeader = Bukkit.getPlayer(newLeaderName);
-        if (newLeader == null) {
-            sender.sendMessage(ColorUtils.colorize("&c玩家 " + newLeaderName + " 不在线！"));
-            return;
+        UUID newLeaderUuid = Bukkit.getPlayer(newLeaderName).getUniqueId();
+        if (newLeaderUuid == null || !newLeader.isOnline()) {
+            sender.sendMessage(ColorUtils.colorize("&6新会长不存在"));
         }
-        
         plugin.getGuildService().getGuildByNameAsync(guildName).thenAccept(guild -> {
-            if (guild == null) {
-                sender.sendMessage(ColorUtils.colorize("&c工会 " + guildName + " 不存在！"));
-                return;
+            String SnewLeaderUuid = String.valueOf(newLeaderUuid);
+            if (plugin.getGuildService().GuildLeaderChange(guild.getId(), SnewLeaderUuid, newLeaderName)){
+                sender.sendMessage(ColorUtils.colorize("&6您已将工会转给 " + newLeaderName));
+                newLeader.sendMessage(ColorUtils.colorize("&6管理员将工会会长转让给了你"));
+            } else {
+                sender.sendMessage(ColorUtils.colorize("&cBoom"));
             }
-            
-            // 检查新会长是否是该工会成员
-            plugin.getGuildService().getGuildMemberAsync(guild.getId(), newLeader.getUniqueId()).thenAccept(member -> {
-                if (member == null) {
-                    sender.sendMessage(ColorUtils.colorize("&c玩家 " + newLeaderName + " 不是该工会成员！"));
-                    return;
-                }
-                
-                // 转让会长
-                UUID leaderUuid = Bukkit.getPlayer(sender.getName()).getUniqueId();
-                plugin.getGuildService().AdminTransfer(guild.getId(), leaderUuid, newLeader.getUniqueId(),newLeaderName).thenCompose(aBoolean -> {
-                    if (aBoolean){
-                        sender.sendMessage(ColorUtils.colorize("&a工会 " + guildName + " 的会长已转让给 " + newLeaderName + "！"));
-                    } else {
-                        sender.sendMessage("TEST");
-                    }
-                    return null;
-                });
-            });
         });
     }
-    
+
+
     private void handleEconomy(CommandSender sender, String[] args) {
         if (args.length < 4) {
             sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin economy <工会名称> <set|add|remove> <金额>"));
             return;
         }
-        
+
         String guildName = args[1];
         String operation = args[2];
         double amount;
-        
+
         try {
             amount = Double.parseDouble(args[3]);
         } catch (NumberFormatException e) {
             sender.sendMessage(ColorUtils.colorize("&c金额格式错误！"));
             return;
         }
-        
+
         plugin.getGuildService().getGuildByNameAsync(guildName).thenAccept(guild -> {
             if (guild == null) {
                 sender.sendMessage(ColorUtils.colorize("&c工会 " + guildName + " 不存在！"));
                 return;
             }
-            
+
             final double[] newBalance = {guild.getBalance()};
             switch (operation.toLowerCase()) {
                 case "set":
@@ -355,7 +340,7 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(ColorUtils.colorize("&c无效的操作！使用 set|add|remove"));
                     return;
             }
-            
+
             // 更新工会资金
             plugin.getGuildService().updateGuildBalanceAsync(guild.getId(), newBalance[0]).thenAccept(success -> {
                 if (success) {
@@ -367,13 +352,13 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             });
         });
     }
-    
+
     private void handleRelation(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ColorUtils.colorize("&c用法: /guildadmin relation <list|create|delete|gui>"));
             return;
         }
-        
+
         switch (args[1].toLowerCase()) {
             case "gui":
                 if (sender instanceof Player player) {
@@ -389,11 +374,11 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ColorUtils.colorize("&6=== 工会关系列表 ==="));
                 plugin.getGuildService().getAllGuildsAsync().thenCompose(guilds -> {
                     List<CompletableFuture<List<GuildRelation>>> relationFutures = new ArrayList<>();
-                    
+
                     for (Guild guild : guilds) {
                         relationFutures.add(plugin.getGuildService().getGuildRelationsAsync(guild.getId()));
                     }
-                    
+
                     return CompletableFuture.allOf(relationFutures.toArray(new CompletableFuture[0]))
                         .thenApply(v -> {
                             List<GuildRelation> allRelations = new ArrayList<>();
@@ -411,11 +396,11 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(ColorUtils.colorize("&c暂无工会关系"));
                         return;
                     }
-                    
+
                     for (GuildRelation relation : relations) {
                         String status = getRelationStatusText(relation.getStatus());
                         String type = getRelationTypeText(relation.getType());
-                        sender.sendMessage(ColorUtils.colorize(String.format("&e%s ↔ %s &7- %s &7- %s", 
+                        sender.sendMessage(ColorUtils.colorize(String.format("&e%s ↔ %s &7- %s &7- %s",
                             relation.getGuild1Name(), relation.getGuild2Name(), type, status)));
                     }
                 });
@@ -440,12 +425,12 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                 break;
         }
     }
-    
+
     private void handleCreateRelation(CommandSender sender, String[] args) {
         String guild1Name = args[2];
         String guild2Name = args[3];
         String relationTypeStr = args[4];
-        
+
         // 解析关系类型
         GuildRelation.RelationType relationType;
         try {
@@ -454,16 +439,16 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(ColorUtils.colorize("&c无效的关系类型！使用: ally, enemy, war, truce, neutral"));
             return;
         }
-        
+
         // 获取两个工会
         CompletableFuture<Guild> guild1Future = plugin.getGuildService().getGuildByNameAsync(guild1Name);
         CompletableFuture<Guild> guild2Future = plugin.getGuildService().getGuildByNameAsync(guild2Name);
-        
+
         CompletableFuture.allOf(guild1Future, guild2Future).thenAccept(v -> {
             try {
                 Guild guild1 = guild1Future.get();
                 Guild guild2 = guild2Future.get();
-                
+
                 if (guild1 == null) {
                     sender.sendMessage(ColorUtils.colorize("&c工会 " + guild1Name + " 不存在！"));
                     return;
@@ -476,11 +461,11 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(ColorUtils.colorize("&c不能与自己建立关系！"));
                     return;
                 }
-                
+
                 // 创建关系
                 plugin.getGuildService().createGuildRelationAsync(
-                    guild1.getId(), guild2.getId(), 
-                    guild1.getName(), guild2.getName(), 
+                    guild1.getId(), guild2.getId(),
+                    guild1.getName(), guild2.getName(),
                     relationType, UUID.randomUUID(), "管理员"
                 ).thenAccept(success -> {
                     if (success) {
@@ -489,26 +474,26 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                         sender.sendMessage(ColorUtils.colorize("&c创建关系失败！"));
                     }
                 });
-                
+
             } catch (Exception e) {
                 sender.sendMessage(ColorUtils.colorize("&c创建关系时发生错误: " + e.getMessage()));
             }
         });
     }
-    
+
     private void handleDeleteRelation(CommandSender sender, String[] args) {
         String guild1Name = args[2];
         String guild2Name = args[3];
-        
+
         // 获取两个工会
         CompletableFuture<Guild> guild1Future = plugin.getGuildService().getGuildByNameAsync(guild1Name);
         CompletableFuture<Guild> guild2Future = plugin.getGuildService().getGuildByNameAsync(guild2Name);
-        
+
         CompletableFuture.allOf(guild1Future, guild2Future).thenAccept(v -> {
             try {
                 Guild guild1 = guild1Future.get();
                 Guild guild2 = guild2Future.get();
-                
+
                 if (guild1 == null) {
                     sender.sendMessage(ColorUtils.colorize("&c工会 " + guild1Name + " 不存在！"));
                     return;
@@ -517,13 +502,13 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(ColorUtils.colorize("&c工会 " + guild2Name + " 不存在！"));
                     return;
                 }
-                
+
                 // 查找并删除关系
                 plugin.getGuildService().getGuildRelationsAsync(guild1.getId()).thenAccept(relations -> {
                     for (GuildRelation relation : relations) {
                         if ((relation.getGuild1Id() == guild1.getId() && relation.getGuild2Id() == guild2.getId()) ||
                             (relation.getGuild1Id() == guild2.getId() && relation.getGuild2Id() == guild1.getId())) {
-                            
+
                             plugin.getGuildService().deleteGuildRelationAsync(relation.getId()).thenAccept(success -> {
                                 if (success) {
                                     sender.sendMessage(ColorUtils.colorize("&a已删除关系: " + guild1Name + " ↔ " + guild2Name));
@@ -536,13 +521,13 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                     }
                     sender.sendMessage(ColorUtils.colorize("&c未找到工会 " + guild1Name + " 和 " + guild2Name + " 之间的关系！"));
                 });
-                
+
             } catch (Exception e) {
                 sender.sendMessage(ColorUtils.colorize("&c删除关系时发生错误: " + e.getMessage()));
             }
         });
     }
-    
+
     private String getRelationStatusText(GuildRelation.RelationStatus status) {
         switch (status) {
             case PENDING: return "待处理";
@@ -552,7 +537,7 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             default: return "未知";
         }
     }
-    
+
     private String getRelationTypeText(GuildRelation.RelationType type) {
         switch (type) {
             case ALLY: return "盟友";
@@ -563,7 +548,7 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
             default: return "未知";
         }
     }
-    
+
     private void handleReload(CommandSender sender) {
         try {
             plugin.getConfigManager().reloadAllConfigs();
@@ -669,8 +654,8 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                             return;
                         }
                         plugin.getGuildService().createGuildRelationAsync(
-                            guild1.getId(), guild2.getId(), 
-                            guild1.getName(), guild2.getName(), 
+                            guild1.getId(), guild2.getId(),
+                            guild1.getName(), guild2.getName(),
                             relationTypeTest, UUID.randomUUID(), "管理员"
                         ).thenAccept(success -> {
                             if (success) {
@@ -687,7 +672,7 @@ public class GuildAdminCommand implements CommandExecutor, TabCompleter {
                 break;
         }
     }
-    
+
     private void handleHelp(CommandSender sender) {
         sender.sendMessage(ColorUtils.colorize("&6=== 工会管理员命令 ==="));
         sender.sendMessage(ColorUtils.colorize("&e/guildadmin &7- 打开管理员GUI"));

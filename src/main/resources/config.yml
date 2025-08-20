@@ -82,6 +82,8 @@ gui:
   show-tag: true
   # 是否显示工会描述
   show-description: true
+  # 转让工会会长按钮标题
+  change-leader: "&6转为会长"
 
 # 占位符配置
 placeholders:

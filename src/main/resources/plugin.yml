@@ -65,3 +65,6 @@ permissions:
   guild.transfer:
     description: 允许向其他工会转账
     default: true
+  guild.GuildLeaderChange:
+    description: 允许更改会长 (会长)
+    default: true
