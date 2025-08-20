@@ -78,9 +78,6 @@ public class GuildSettingsGUI implements GUI {
             case 24: // 提升成员
                 handlePromoteMember(player);
                 break;
-            case 25: // 转让
-                handleChangeLeader(player);
-                break;
             case 26: // 降级成员
                 handleDemoteMember(player);
                 break;
@@ -443,21 +440,6 @@ public class GuildSettingsGUI implements GUI {
         plugin.getGuiManager().openGUI(player, new DemoteMemberGUI(plugin, guild));
     }
 
-    /**
-     * 转让会长
-     */
-    private void handleChangeLeader(Player player) {
-        // 检查权限（只有会长可以转）
-        GuildMember member = plugin.getGuildService().getGuildMember(player.getUniqueId());
-        if (member == null || member.getRole() != GuildMember.Role.LEADER) {
-            String message = plugin.getConfigManager().getMessagesConfig().getString("gui.leader-only", "&c只有工会会长才能执行此操作");
-            player.sendMessage(ColorUtils.colorize(message));
-            return;
-        }
-
-        // 打开降级成员GUI
-        plugin.getGuiManager().openGUI(player, new ChangeLeaderGUI(plugin, guild));
-    }
 
     /**
      * 处理申请管理

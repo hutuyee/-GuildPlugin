@@ -135,7 +135,22 @@ public class MemberManagementGUI implements GUI {
         );
         inventory.setItem(53, back);
     }
-    
+
+    /**
+     * 转让会长
+     */
+    private void handleChangeLeader(Player player) {
+        // 检查权限（只有会长可以转）
+        GuildMember member = plugin.getGuildService().getGuildMember(player.getUniqueId());
+        if (member == null || member.getRole() != GuildMember.Role.LEADER) {
+            String message = plugin.getConfigManager().getMessagesConfig().getString("gui.leader-only", "&c只有工会会长才能执行此操作");
+            player.sendMessage(ColorUtils.colorize(message));
+            return;
+        }
+
+        // 打开降级成员GUI
+        plugin.getGuiManager().openGUI(player, new ChangeLeaderGUI(plugin, guild));
+    }
     /**
      * 加载成员列表
      */
@@ -296,6 +311,9 @@ public class MemberManagementGUI implements GUI {
                 break;
             case 51: // 降级成员
                 handleDemoteMember(player);
+                break;
+            case 52: // 转让
+                handleChangeLeader(player);
                 break;
             case 53: // 返回
                 plugin.getGuiManager().openGUI(player, new MainGuildGUI(plugin));
