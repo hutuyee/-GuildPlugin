@@ -32,7 +32,8 @@ public class GuildSettingsGUI implements GUI {
     
     @Override
     public String getTitle() {
-        return ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("guild-settings.title", "&6工会设置"));
+        return ColorUtils.colorize(plugin.getConfigManager().getGuiConfig().getString("guild-settings.title", "&6工会设置 - {guild_name}")
+            .replace("{guild_name}", guild.getName() != null ? guild.getName() : "未知工会"));
     }
     
     @Override

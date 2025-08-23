@@ -130,6 +130,7 @@ public class GuildNameInputGUI implements GUI {
         player.sendMessage(ColorUtils.colorize("&6请输入新的工会名称:"));
         player.sendMessage(ColorUtils.colorize("&7当前名称: &f" + currentName));
         player.sendMessage(ColorUtils.colorize("&7输入 &c取消 &7来取消操作"));
+        player.sendMessage(ColorUtils.colorize("&7支持颜色字符，例如: &a&l绿色粗体 &7或 &c&o红色斜体"));
         player.sendMessage(ColorUtils.colorize("&7注意：工会名称不能与其他工会重复"));
     }
     
@@ -174,15 +175,16 @@ public class GuildNameInputGUI implements GUI {
         
         String newName = input.trim();
         
-        // 检查名称长度
-        if (newName.length() < 2) {
-            player.sendMessage(ColorUtils.colorize("&c工会名称至少需要2个字符！"));
+        // 检查名称长度（基于清理后的名称，不包括颜色字符）
+        String cleanName = newName.replaceAll("§[0-9a-fk-or]", "").replaceAll("&[0-9a-fk-or]", "");
+        if (cleanName.length() < 2) {
+            player.sendMessage(ColorUtils.colorize("&c工会名称至少需要2个字符（不包括颜色字符）！"));
             plugin.getGuiManager().openGUI(player, this);
             return;
         }
         
-        if (newName.length() > 16) {
-            player.sendMessage(ColorUtils.colorize("&c工会名称不能超过16个字符！"));
+        if (cleanName.length() > 16) {
+            player.sendMessage(ColorUtils.colorize("&c工会名称不能超过16个字符（不包括颜色字符）！"));
             plugin.getGuiManager().openGUI(player, this);
             return;
         }
@@ -194,8 +196,8 @@ public class GuildNameInputGUI implements GUI {
             return;
         }
         
-        // 检查名称格式（只允许中文、英文、数字）
-        if (!newName.matches("^[\\u4e00-\\u9fa5a-zA-Z0-9]+$")) {
+        // 检查名称格式（允许中文、英文、数字和颜色字符）
+        if (!cleanName.matches("^[\\u4e00-\\u9fa5a-zA-Z0-9]+$")) {
             player.sendMessage(ColorUtils.colorize("&c工会名称只能包含中文、英文和数字！"));
             plugin.getGuiManager().openGUI(player, this);
             return;
@@ -240,8 +242,17 @@ public class GuildNameInputGUI implements GUI {
                                 "原名称: " + currentName + ", 新名称: " + newName
                             );
                             
-                            // 返回到工会设置GUI
-                            plugin.getGuiManager().openGUI(player, new GuildSettingsGUI(plugin, guild));
+                            // 重新获取最新的工会信息
+                            plugin.getGuildService().getGuildByIdAsync(guild.getId()).thenAccept(updatedGuild -> {
+                                if (updatedGuild != null) {
+                                    // 返回到工会设置GUI（使用最新的工会信息）
+                                    plugin.getGuiManager().openGUI(player, new GuildSettingsGUI(plugin, updatedGuild));
+                                } else {
+                                    // 如果获取失败，使用本地更新的对象
+                                    guild.setName(newName);
+                                    plugin.getGuiManager().openGUI(player, new GuildSettingsGUI(plugin, guild));
+                                }
+                            });
                         } else {
                             // 更新失败
                             player.sendMessage(ColorUtils.colorize("&c工会名称修改失败！请重试"));
