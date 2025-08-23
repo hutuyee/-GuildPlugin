@@ -4,7 +4,7 @@
   <groupId>com.guild</groupId>
   <artifactId>guild-plugin</artifactId>
   <name>Guild Plugin</name>
-  <version>1.0.0</version>
+  <version>1.2.1</version>
   <description>一个功能完整的我的世界工会插件</description>
   <build>
     <plugins>
@@ -75,7 +75,7 @@
     <dependency>
       <groupId>org.spigotmc</groupId>
       <artifactId>spigot-api</artifactId>
-      <version>1.21.4-R0.1-SNAPSHOT</version>
+      <version>1.21-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -98,8 +98,10 @@
     </dependency>
   </dependencies>
   <properties>
+    <spigot.version>1.21.8-R0.1-SNAPSHOT</spigot.version>
     <maven.compiler.target>17</maven.compiler.target>
     <maven.compiler.source>17</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <folia.version>1.21.8-R0.1-SNAPSHOT</folia.version>
   </properties>
 </project>

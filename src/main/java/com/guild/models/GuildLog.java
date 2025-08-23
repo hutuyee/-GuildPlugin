@@ -150,7 +150,7 @@ public class GuildLog {
      */
     public String getFormattedTime() {
         if (createdAt == null) return "未知";
-        return createdAt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return createdAt.format(com.guild.core.time.TimeProvider.FULL_FORMATTER);
     }
 
     /**

@@ -6,7 +6,7 @@
 
     <groupId>com.guild</groupId>
     <artifactId>guild-plugin</artifactId>
-    <version>1.0.0</version>
+    <version>1.2.1</version>
     <packaging>jar</packaging>
 
     <name>Guild Plugin</name>
@@ -16,6 +16,9 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- 添加版本属性 -->
+        <spigot.version>1.21.8-R0.1-SNAPSHOT</spigot.version>
+        <folia.version>1.21.8-R0.1-SNAPSHOT</folia.version>
     </properties>
 
     <repositories>
@@ -23,6 +26,7 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+
         <repository>
             <id>sonatype</id>
             <url>https://oss.sonatype.org/content/groups/public/</url>
@@ -42,9 +46,10 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.21.4-R0.1-SNAPSHOT</version>
+            <version>1.21-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
+
 
         <!-- PlaceholderAPI -->
         <dependency>
@@ -147,4 +152,6 @@
             </plugin>
         </plugins>
     </build>
+    
+
 </project>
