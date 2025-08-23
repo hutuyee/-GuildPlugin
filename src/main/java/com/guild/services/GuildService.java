@@ -799,6 +799,14 @@ public class GuildService {
     }
     
     /**
+     * 检查是否为指定工会的会长
+     */
+    public boolean isGuildLeader(UUID playerUuid, int guildId) {
+        GuildMember member = getGuildMember(playerUuid);
+        return member != null && member.getGuildId() == guildId && member.getRole() == GuildMember.Role.LEADER;
+    }
+    
+    /**
      * 检查是否为工会官员
      */
     public boolean isGuildOfficer(UUID playerUuid) {

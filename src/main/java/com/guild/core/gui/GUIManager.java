@@ -1,6 +1,7 @@
 package com.guild.core.gui;
 
 import com.guild.GuildPlugin;
+import com.guild.gui.GuildNameInputGUI;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -257,6 +258,38 @@ public class GUIManager implements Listener {
         try {
             inputModes.put(player.getUniqueId(), inputHandler);
             logger.info("玩家 " + player.getName() + " 进入输入模式");
+        } catch (Exception e) {
+            logger.severe("设置输入模式时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 设置玩家输入模式（带GUI对象）
+     */
+    public void setInputMode(Player player, String mode, GUI gui) {
+        // 确保在主线程中执行
+        if (!CompatibleScheduler.isPrimaryThread()) {
+            CompatibleScheduler.runTask(plugin, () -> setInputMode(player, mode, gui));
+            return;
+        }
+        
+        try {
+            // 为工会名称输入创建特殊的输入处理器
+            if ("guild_name_input".equals(mode) && gui instanceof GuildNameInputGUI) {
+                GuildNameInputGUI nameInputGUI = (GuildNameInputGUI) gui;
+                inputModes.put(player.getUniqueId(), input -> {
+                    if ("取消".equals(input.trim())) {
+                        nameInputGUI.handleCancel(player);
+                        return true;
+                    }
+                    nameInputGUI.handleInputComplete(player, input);
+                    return true;
+                });
+                logger.info("玩家 " + player.getName() + " 进入工会名称输入模式");
+            } else {
+                logger.warning("未知的输入模式: " + mode);
+            }
         } catch (Exception e) {
             logger.severe("设置输入模式时发生错误: " + e.getMessage());
             e.printStackTrace();
