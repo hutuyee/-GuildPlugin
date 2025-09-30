@@ -7,10 +7,9 @@ import com.guild.services.GuildService;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import com.guild.core.utils.PlaceholderUtils;
 
-import java.time.format.DateTimeFormatter;
 import com.guild.core.time.TimeProvider;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -82,7 +81,15 @@ public class GuildPlaceholderExpansion extends PlaceholderExpansion {
                 
                 // 玩家在工会中的信息
                 case "role":
-                    return getPlayerRole(player);
+                    return getPlayerRoleColored(player);
+                case "roleraw":
+                    return getPlayerRoleRaw(player);
+                case "rolecolor":
+                    return getPlayerRoleColor(player);
+                case "rolecolored":
+                    return getPlayerRoleColored(player);
+                case "roleprefix":
+                    return getPlayerRolePrefix(player);
                 case "joined":
                     return getPlayerJoinedTime(player);
                 case "contribution":
@@ -209,10 +216,40 @@ public class GuildPlaceholderExpansion extends PlaceholderExpansion {
     
     // ==================== 玩家在工会中的信息 ====================
     
-    private String getPlayerRole(Player player) {
+    private String getPlayerRoleRaw(Player player) {
         try {
             GuildMember member = guildService.getGuildMember(player.getUniqueId());
             return member != null ? member.getRole().getDisplayName() : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String getPlayerRoleColor(Player player) {
+        try {
+            GuildMember member = guildService.getGuildMember(player.getUniqueId());
+            if (member == null) return "";
+            return PlaceholderUtils.getRoleColorCode(member.getRole());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String getPlayerRoleColored(Player player) {
+        try {
+            GuildMember member = guildService.getGuildMember(player.getUniqueId());
+            if (member == null) return "";
+            return PlaceholderUtils.getColoredRoleDisplay(member.getRole());
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private String getPlayerRolePrefix(Player player) {
+        try {
+            GuildMember member = guildService.getGuildMember(player.getUniqueId());
+            GuildMember.Role role = member != null ? member.getRole() : null;
+            return PlaceholderUtils.getRoleSeparator(role);
         } catch (Exception e) {
             return "";
         }

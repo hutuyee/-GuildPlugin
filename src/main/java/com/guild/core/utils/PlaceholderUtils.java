@@ -2,11 +2,11 @@ package com.guild.core.utils;
 
 import com.guild.models.Guild;
 import com.guild.models.GuildMember;
+import com.guild.GuildPlugin;
 import org.bukkit.entity.Player;
 
 import java.time.format.DateTimeFormatter;
 import com.guild.core.time.TimeProvider;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -15,6 +15,13 @@ import java.util.concurrent.CompletableFuture;
 public class PlaceholderUtils {
     
     private static final DateTimeFormatter DATE_FORMATTER = TimeProvider.FULL_FORMATTER;
+    private static String cachedLeaderColor;
+    private static String cachedOfficerColor;
+    private static String cachedMemberColor;
+    private static String cachedSeparatorText;
+    private static boolean cachedSeparatorEnabled;
+    private static boolean cachedSeparatorFollowRoleColor;
+    private static String cachedSeparatorDefaultColor;
     
     /**
      * 替换工会相关占位符
@@ -127,7 +134,7 @@ public class PlaceholderUtils {
             .replace("{member_name}", member.getPlayerName())
             .replace("{member_uuid}", member.getPlayerUuid().toString())
             .replace("{member_role}", getRoleDisplayName(member.getRole()))
-            .replace("{member_role_color}", getRoleColor(member.getRole()))
+            .replace("{member_role_color}", getRoleColorFromConfig(member.getRole()))
             .replace("{member_join_time}", member.getJoinedAt().format(DATE_FORMATTER))
             .replace("{member_join_date}", member.getJoinedAt().toLocalDate().toString())
             
@@ -210,15 +217,73 @@ public class PlaceholderUtils {
     }
     
     /**
-     * 获取角色颜色
+     * 从配置获取角色颜色
      */
-    private static String getRoleColor(GuildMember.Role role) {
+    private static String getRoleColorFromConfig(GuildMember.Role role) {
+        ensureRoleConfigCached();
         switch (role) {
-            case LEADER: return "&6";
-            case OFFICER: return "&e";
-            case MEMBER: return "&7";
+            case LEADER: return cachedLeaderColor;
+            case OFFICER: return cachedOfficerColor;
+            case MEMBER: return cachedMemberColor;
             default: return "&f";
         }
+    }
+
+    /**
+     * 对外提供：获取职位颜色代码（如 "&6"）
+     */
+    public static String getRoleColorCode(GuildMember.Role role) {
+        return getRoleColorFromConfig(role);
+    }
+
+    /**
+     * 对外提供：获取带颜色的职位显示文本
+     */
+    public static String getColoredRoleDisplay(GuildMember.Role role) {
+        String color = getRoleColorFromConfig(role);
+        return ColorUtils.colorize(color + getRoleDisplayName(role));
+    }
+
+    /**
+     * 获取职位分隔符（根据配置与是否有职位决定是否返回）
+     */
+    public static String getRoleSeparator(GuildMember.Role roleOrNull) {
+        ensureRoleConfigCached();
+        if (!cachedSeparatorEnabled) {
+            return "";
+        }
+        // 未入会或无角色时不显示分隔符
+        if (roleOrNull == null) {
+            return "";
+        }
+        String color = cachedSeparatorFollowRoleColor ? getRoleColorFromConfig(roleOrNull) : cachedSeparatorDefaultColor;
+        return ColorUtils.colorize(color + cachedSeparatorText);
+    }
+
+    private static void ensureRoleConfigCached() {
+        if (cachedLeaderColor != null) {
+            return;
+        }
+        GuildPlugin plugin = GuildPlugin.getInstance();
+        if (plugin == null || plugin.getConfigManager() == null) {
+            // 合理的默认值
+            cachedLeaderColor = "&6";
+            cachedOfficerColor = "&b";
+            cachedMemberColor = "&7";
+            cachedSeparatorText = " | ";
+            cachedSeparatorEnabled = true;
+            cachedSeparatorFollowRoleColor = true;
+            cachedSeparatorDefaultColor = "&7";
+            return;
+        }
+        org.bukkit.configuration.file.FileConfiguration cfg = plugin.getConfigManager().getMainConfig();
+        cachedLeaderColor = cfg.getString("display.role-colors.leader", "&6");
+        cachedOfficerColor = cfg.getString("display.role-colors.officer", "&b");
+        cachedMemberColor = cfg.getString("display.role-colors.member", "&7");
+        cachedSeparatorText = cfg.getString("display.role-separator.text", " | ");
+        cachedSeparatorEnabled = cfg.getBoolean("display.role-separator.enabled", true);
+        cachedSeparatorFollowRoleColor = cfg.getBoolean("display.role-separator.color-per-role", true);
+        cachedSeparatorDefaultColor = cfg.getString("display.role-separator.default-color", "&7");
     }
     
     /**
