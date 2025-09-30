@@ -6,7 +6,6 @@ import com.guild.core.utils.ColorUtils;
 import com.guild.core.utils.CompatibleScheduler;
 import com.guild.models.Guild;
 import com.guild.models.GuildMember;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
@@ -131,11 +130,11 @@ public class ConfirmDeleteGuildGUI implements GUI {
         // 删除工会
         plugin.getGuildService().deleteGuildAsync(guild.getId(), player.getUniqueId()).thenAccept(success -> {
             if (success) {
-                String message = plugin.getConfigManager().getMessagesConfig().getString("delete.success", "&a工会 &e{guild} &a已被删除！")
-                    .replace("{guild}", guild.getName());
+                String template = plugin.getConfigManager().getMessagesConfig().getString("delete.success", "&a工会 &e{guild} &a已被删除！");
                 // 回到主线程进行界面操作
                 CompatibleScheduler.runTask(plugin, () -> {
-                    player.sendMessage(ColorUtils.colorize(message));
+                    String rendered = ColorUtils.replaceWithColorIsolation(template, "{guild}", guild.getName());
+                    player.sendMessage(rendered);
                     // 使用GUIManager以确保主线程安全关闭与打开
                     plugin.getGuiManager().closeGUI(player);
                     plugin.getGuiManager().openGUI(player, new MainGuildGUI(plugin));

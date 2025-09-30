@@ -298,8 +298,8 @@ public class GuildCommand implements CommandExecutor, TabCompleter {
         guildService.createGuildAsync(name, tag, description, player.getUniqueId(), player.getName())
             .thenAcceptAsync(success -> {
                 if (success) {
-                    String successMessage = plugin.getConfigManager().getMessagesConfig().getString("create.success", "&a工会 {name} 创建成功！");
-                    player.sendMessage(ColorUtils.colorize(successMessage.replace("{name}", name)));
+                    String template = plugin.getConfigManager().getMessagesConfig().getString("create.success", "&a工会 {name} 创建成功！");
+                    player.sendMessage(ColorUtils.replaceWithColorIsolation(template, "{name}", name));
                     
                     String costMessage = plugin.getConfigManager().getMessagesConfig().getString("create.cost-info", "&e创建费用: {amount}")
                         .replace("{amount}", plugin.getEconomyManager().format(creationCost));

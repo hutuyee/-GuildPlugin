@@ -14,7 +14,6 @@ import com.guild.listeners.PlayerListener;
 import com.guild.listeners.GuildListener;
 import com.guild.services.GuildService;
 import com.guild.core.utils.ServerUtils;
-import com.guild.core.utils.CompatibleScheduler;
 import com.guild.core.utils.TestUtils;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -49,9 +48,9 @@ public class GuildPlugin extends JavaPlugin {
             return;
         }
         
-        // 运行兼容性测试
-        TestUtils.testCompatibility();
-        TestUtils.testSchedulerCompatibility();
+        // 运行兼容性测试（使用插件日志器）
+        TestUtils.testCompatibility(logger);
+        TestUtils.testSchedulerCompatibility(logger);
         
         try {
             // 初始化服务容器
